@@ -13,6 +13,7 @@ public class ImageLoader {
         leftImages = new BufferedImage[2][];
         rightImages = new BufferedImage[2][];
         standingImages = new BufferedImage[2][];
+        loadImage();
     }
 
     public static ImageLoader getInstance() {

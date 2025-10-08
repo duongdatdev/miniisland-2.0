@@ -80,20 +80,12 @@ public class MiniIsland extends JFrame {
         gameScene.requestFocusInWindow();
 
         client = Client.getGameClient();
-        socket = client.getSocket();
-        writer = client.getWriter();
-
+        
         clientPlayer = gameScene.getPlayerMP();
-        ClientRecivingThread clientRecivingThread = new ClientRecivingThread(socket, clientPlayer, gameScene);
+        ClientRecivingThread clientRecivingThread = new ClientRecivingThread(client.getWebSocketClient(), clientPlayer, gameScene);
         clientRecivingThread.start();
 
-        try {
-            client.register(new Protocol().HelloPacket(signInModel.getUsername()));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        clientPlayer.setWriter(writer);
+        client.sendToServer(new Protocol().HelloPacket(signInModel.getUsername()));
 
         changeToGamePanel();
     }

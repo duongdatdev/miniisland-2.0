@@ -5,12 +5,11 @@ import network.entitiesNet.PlayerMP;
 
 import javax.swing.*;
 import java.awt.image.BufferedImage;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.Socket;
 
 /**
  * This class is responsible for receiving messages from the server and updating the game state accordingly.
+ * Updated to use WebSocket instead of TCP Socket
  * It is a thread that runs in the background and listens for messages from the server.
  * It updates the game state based on the messages received from the server.
  *
@@ -19,13 +18,11 @@ import java.net.Socket;
 
 public class ClientRecivingThread extends Thread {
 
-    private DataInputStream reader;
-
     private PlayerMP clientPlayer;
     private GameScene gameScene;
     boolean isRunning = true;
 
-    private Socket socket;
+    private WebSocketGameClient webSocketClient;
 
     /**
      * Creates a new instance of ClientReceivingThread
@@ -34,28 +31,36 @@ public class ClientRecivingThread extends Thread {
      * @param gameScene    the game scene
      */
 
-    public ClientRecivingThread(Socket socket, PlayerMP clientPlayer, GameScene gameScene) {
-
-
+    public ClientRecivingThread(WebSocketGameClient webSocketClient, PlayerMP clientPlayer, GameScene gameScene) {
         this.clientPlayer = clientPlayer;
         this.gameScene = gameScene;
+        this.webSocketClient = webSocketClient;
 
-        this.socket = socket;
-
-        try {
-            reader = new DataInputStream(socket.getInputStream());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        // Set up message listener for WebSocket
+        webSocketClient.setMessageListener(new WebSocketGameClient.MessageListener() {
+            @Override
+            public void onMessageReceived(String message) {
+                handleMessage(message);
+            }
+        });
     }
 
     @Override
     public void run() {
+        // The WebSocket client handles messages through the listener
+        // Keep this thread alive while the game is running
         while (isRunning) {
-            String sentence = "";
             try {
-                sentence = reader.readUTF();
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                isRunning = false;
+                break;
+            }
+        }
+    }
+
+    private void handleMessage(String sentence) {
+        try {
 
                 if (sentence.startsWith("ID")) {
                     int pos1 = sentence.indexOf(',');
@@ -268,17 +273,12 @@ public class ClientRecivingThread extends Thread {
                         gameScene.removePlayer(username);
                     }
                 }
-            } catch (IOException ex) {
-                System.out.println("Something went wrong while reading the message from the server.");
-                ex.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
 
-        try {
-            reader.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
+    public void stopThread() {
+        isRunning = false;
     }
 }

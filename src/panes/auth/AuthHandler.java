@@ -1,29 +1,34 @@
 package panes.auth;
 
+import network.client.WebSocketGameClient;
 import panes.auth.signIn.SignInModel;
 
 import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class AuthHandler extends Thread {
-    private Socket clientAuthSocket;
-    private DataInputStream reader;
-    private DataOutputStream writer;
+    private WebSocketGameClient webSocketClient;
     private boolean isRunning = true;
     private final Runnable onSuccess;
 
     public AuthHandler(Runnable onSuccess) {
         this.onSuccess = onSuccess;
 
-
         try {
-            clientAuthSocket = new Socket("localhost", 11111);
-            reader = new DataInputStream(clientAuthSocket.getInputStream());
-            writer = new DataOutputStream(clientAuthSocket.getOutputStream());
-        } catch (IOException ex) {
+            URI serverUri = new URI("ws://localhost:11111");
+            webSocketClient = new WebSocketGameClient(serverUri);
+            webSocketClient.connectBlocking();
+            
+            // Set up message listener
+            webSocketClient.setMessageListener(new WebSocketGameClient.MessageListener() {
+                @Override
+                public void onMessageReceived(String message) {
+                    processResponse(message);
+                }
+            });
+        } catch (IOException | URISyntaxException | InterruptedException ex) {
             JOptionPane.showMessageDialog(null, "Server is not running");
             System.exit(0);
         }
@@ -31,14 +36,12 @@ public class AuthHandler extends Thread {
 
     @Override
     public void run() {
+        // WebSocket handles messages through listener
         while (isRunning) {
             try {
-                if (reader.available() > 0) {
-                    String sentence = reader.readUTF();
-                    processResponse(sentence);
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
+                Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                isRunning = false;
             }
         }
     }
@@ -92,25 +95,20 @@ public class AuthHandler extends Thread {
         if (message.equals("exit")) {
             System.exit(0);
         } else {
-            try {
-                writer.writeUTF(message);
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            if (webSocketClient != null && webSocketClient.isOpen()) {
+                webSocketClient.sendMessage(message);
             }
         }
     }
 
     private void closeAll() {
-        try {
-            reader.close();
-            writer.close();
-            clientAuthSocket.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        if (webSocketClient != null) {
+            webSocketClient.closeConnection();
         }
     }
 
     public void stopHandler() {
         isRunning = false;
+        closeAll();
     }
 }

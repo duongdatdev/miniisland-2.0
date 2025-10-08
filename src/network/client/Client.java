@@ -1,22 +1,22 @@
 package network.client;
 
 import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 
+/**
+ * Client class using WebSocket instead of TCP Socket
+ */
 public class Client {
 
     /**
      * Creates a new instance of Client
      */
 
-    private Socket clientSocket;
+    private WebSocketGameClient webSocketClient;
     private String hostName = "localhost";
     private int serverPort = 11111;
-    private DataInputStream reader;
-    private DataOutputStream writer;
     private Protocol protocol;
 
     private static Client client;
@@ -25,49 +25,29 @@ public class Client {
         protocol = new Protocol();
 
         try {
-            clientSocket = new Socket(hostName, serverPort);
-        } catch (IOException ex) {
+            URI serverUri = new URI("ws://" + hostName + ":" + serverPort);
+            webSocketClient = new WebSocketGameClient(serverUri);
+            webSocketClient.connectBlocking();
+        } catch (URISyntaxException | InterruptedException ex) {
             JOptionPane.showMessageDialog(null, "Server is not running");
             System.exit(0);
         }
-
     }
 
     public void register(String message) throws IOException {
-        writer = new DataOutputStream(clientSocket.getOutputStream());
-        writer.writeUTF(message);
-
+        sendToServer(message);
     }
 
     public void sendToServer(String message) {
-        if (message.equals("exit"))
+        if (message.equals("exit")) {
             System.exit(0);
-        else {
-            try {
-                Socket s = new Socket(hostName, serverPort);
-                writer = new DataOutputStream(s.getOutputStream());
-                writer.writeUTF(message);
-            } catch (IOException ex) {
-
+        } else {
+            if (webSocketClient != null && webSocketClient.isOpen()) {
+                webSocketClient.sendMessage(message);
+            } else {
+                System.err.println("WebSocket connection is not open");
             }
         }
-
-    }
-
-    public DataInputStream getReader() {
-        return reader;
-    }
-
-    public void setReader(DataInputStream reader) {
-        this.reader = reader;
-    }
-
-    public DataOutputStream getWriter() {
-        return writer;
-    }
-
-    public void setWriter(DataOutputStream writer) {
-        this.writer = writer;
     }
 
     public Protocol getProtocol() {
@@ -78,8 +58,8 @@ public class Client {
         this.protocol = protocol;
     }
 
-    public Socket getSocket() {
-        return clientSocket;
+    public WebSocketGameClient getWebSocketClient() {
+        return webSocketClient;
     }
 
     public String getIP() {
@@ -88,7 +68,6 @@ public class Client {
 
     public static Client getGameClient() {
         if (client == null) {
-
             try {
                 client = new Client();
             } catch (IOException ex) {
@@ -99,12 +78,14 @@ public class Client {
     }
 
     public void closeAll() {
-        try {
-            reader.close();
-            writer.close();
-            clientSocket.close();
-        } catch (IOException ex) {
+        if (webSocketClient != null) {
+            webSocketClient.closeConnection();
+        }
+    }
 
+    public void setMessageListener(WebSocketGameClient.MessageListener listener) {
+        if (webSocketClient != null) {
+            webSocketClient.setMessageListener(listener);
         }
     }
 }

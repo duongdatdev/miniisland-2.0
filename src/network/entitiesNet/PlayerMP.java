@@ -10,9 +10,6 @@ import panes.chat.DialogText;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.Socket;
 
 public class PlayerMP {
     private Player player;
@@ -25,9 +22,6 @@ public class PlayerMP {
     //Bombs
     private Bullet bullet[] = new Bullet[1000];
     private int curBullet = 0;
-
-    private Socket clientSocket;
-    private DataOutputStream writer;
 
     private BufferedImage chatImage;
     private Timer chatImageTimer;
@@ -42,8 +36,6 @@ public class PlayerMP {
         this.player = player;
         this.x = player.getWorldX();
         this.y = player.getWorldY();
-
-        writer = Client.getGameClient().getWriter();
 
         dialogText = new DialogText();
 
@@ -149,12 +141,8 @@ public class PlayerMP {
         if (message.equals("exit"))
             System.exit(0);
         else {
-            try {
-                writer.writeUTF(message);
-            } catch (IOException ex) {
-            }
+            Client.getGameClient().sendToServer(message);
         }
-
     }
 
     public void shot() {
@@ -256,14 +244,6 @@ public class PlayerMP {
     public void setID(int id) {
         player.setId(id);
         this.id = id;
-    }
-
-    public DataOutputStream getWriter() {
-        return writer;
-    }
-
-    public void setWriter(DataOutputStream writer) {
-        this.writer = writer;
     }
 
     public Player getPlayer() {

@@ -23,25 +23,11 @@ public class KeyHandler implements KeyListener {
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
         switch (keyCode) {
-            case KeyEvent.VK_W,
-                 KeyEvent.VK_UP:
-                up = true;
-                break;
-            case KeyEvent.VK_A,
-                 KeyEvent.VK_LEFT:
-                left = true;
-                break;
-            case KeyEvent.VK_S,
-                 KeyEvent.VK_DOWN:
-                down = true;
-                break;
-            case KeyEvent.VK_D,
-                 KeyEvent.VK_RIGHT:
-                right = true;
-                break;
-            case KeyEvent.VK_SPACE:
-                space = true;
-                break;
+            case KeyEvent.VK_W, KeyEvent.VK_UP -> up = true;
+            case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = true;
+            case KeyEvent.VK_S, KeyEvent.VK_DOWN -> down = true;
+            case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = true;
+            case KeyEvent.VK_SPACE -> space = true;
         }
     }
 
@@ -49,25 +35,11 @@ public class KeyHandler implements KeyListener {
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
         switch (keyCode) {
-            case KeyEvent.VK_W
-            , KeyEvent.VK_UP:
-                up = false;
-                break;
-            case KeyEvent.VK_DOWN,
-                 KeyEvent.VK_S:
-                down = false;
-                break;
-            case KeyEvent.VK_A,
-                 KeyEvent.VK_LEFT:
-                left = false;
-                break;
-            case KeyEvent.VK_D,
-                 KeyEvent.VK_RIGHT:
-                right = false;
-                break;
-            case KeyEvent.VK_SPACE:
-                space = false;
-                break;
+            case KeyEvent.VK_W, KeyEvent.VK_UP -> up = false;
+            case KeyEvent.VK_DOWN, KeyEvent.VK_S -> down = false;
+            case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = false;
+            case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = false;
+            case KeyEvent.VK_SPACE -> space = false;
         }
     }
 

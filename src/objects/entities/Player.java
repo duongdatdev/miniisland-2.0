@@ -56,6 +56,7 @@ public class Player extends Entity {
         downImages = ImageLoader.getInstance().downImages[0];
         leftImages = ImageLoader.getInstance().leftImages[0];
         rightImages = ImageLoader.getInstance().rightImages[0];
+        standingImages = ImageLoader.getInstance().standingImages[0];
     }
 
     public void changeSprite(int spriteIndex){
@@ -63,6 +64,7 @@ public class Player extends Entity {
         downImages = ImageLoader.getInstance().downImages[spriteIndex];
         leftImages = ImageLoader.getInstance().leftImages[spriteIndex];
         rightImages = ImageLoader.getInstance().rightImages[spriteIndex];
+        standingImages = ImageLoader.getInstance().standingImages[spriteIndex];
     }
 
     public void setDefaultPosition() {
@@ -166,6 +168,10 @@ public class Player extends Entity {
         }
         switch (direction) {
             case "UP":
+                if (upImages == null) {
+                    System.err.println("[Player] upImages is null! Returning null for playerImage.");
+                    return null;
+                }
                 if (spriteIndex == 0) {
                     playerImage = upImages[0];
                 }
@@ -180,6 +186,10 @@ public class Player extends Entity {
                 }
                 break;
             case "DOWN":
+                if (downImages == null) {
+                    System.err.println("[Player] downImages is null! Returning null for playerImage.");
+                    return null;
+                }
                 if (spriteIndex == 0) {
                     playerImage = downImages[0];
                 }
@@ -194,6 +204,10 @@ public class Player extends Entity {
                 }
                 break;
             case "LEFT":
+                if (leftImages == null) {
+                    System.err.println("[Player] leftImages is null! Returning null for playerImage.");
+                    return null;
+                }
                 if (spriteIndex == 0) {
                     playerImage = leftImages[0];
                 }
@@ -208,6 +222,10 @@ public class Player extends Entity {
                 }
                 break;
             case "RIGHT":
+                if (rightImages == null) {
+                    System.err.println("[Player] rightImages is null! Returning null for playerImage.");
+                    return null;
+                }
                 if (spriteIndex == 0) {
                     playerImage = rightImages[0];
                 }
@@ -222,6 +240,10 @@ public class Player extends Entity {
                 }
                 break;
             case "STAND":
+                if (standingImages == null) {
+                    System.err.println("[Player] standingImages is null! Returning null for playerImage.");
+                    return null;
+                }
                 if (spriteIndex == 0) {
                     playerImage = standingImages[0];
                 }

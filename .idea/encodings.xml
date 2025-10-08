@@ -14,6 +14,8 @@
     <file url="file://$PROJECT_DIR$/Resource/Images/bomb1.PNG" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/Resource/Images/bomb2.PNG" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/Resource/player/Bomb/bomb.PNG" charset="windows-1252" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/network/client/ClientGUI.java" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/src/network/client/GameBoardPanel.java" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/src/network/client/InputManager.java" charset="windows-1252" />
