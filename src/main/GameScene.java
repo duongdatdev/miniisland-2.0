@@ -253,68 +253,70 @@ public class GameScene extends JPanel implements Runnable {
 
     @Override
     public void run() {
-
-        //FPS
-        double FPS = 90.0;
-        double drawInterval = 1000000000 / FPS;
-        double delta = 0.0;
+        //FPS - Optimized
+        final double TARGET_FPS = 60.0; // Reduced from 90 for better performance
+        final double TARGET_TIME = 1000000000.0 / TARGET_FPS;
         long lastTime = System.nanoTime();
         long currentTime;
-
-        long timer = 0;
-        int drawCount = 0;
+        double delta = 0.0;
+        
+        // FPS counter
+        long fpsTimer = 0;
+        int frameCount = 0;
 
         System.out.println("Game started");
         while (gameThread != null) {
             currentTime = System.nanoTime();
-
-            delta += (currentTime - lastTime) / drawInterval;
-
-//            timer += currentTime - lastTime;
-
+            long elapsed = currentTime - lastTime;
+            
+            delta += elapsed / TARGET_TIME;
+            fpsTimer += elapsed;
             lastTime = currentTime;
 
             if (delta >= 1.0) {
-                updateAndRepaint();
-//                drawCount++;
+                update();
+                repaint();
                 delta--;
+                frameCount++;
+            }
+            
+            // Update FPS every second
+            if (fpsTimer >= 1000000000) {
+                fps = frameCount;
+                frameCount = 0;
+                fpsTimer = 0;
+            }
+            
+            // Small sleep to prevent CPU spinning
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
-    }
-
-    private synchronized void updateAndRepaint() {
-        // Update game logic
-        update();
-
-        // Repaint the scene
-        repaint();
     }
 
     public void update() {
         player.update();
         playerMP.update();
 
-        if (map.getPvpNPC().isPlayerNear(player)) {
-            teleportButtonPvpNPC.setVisible(true);
-        } else {
-            teleportButtonPvpNPC.setVisible(false);
+        // Optimize NPC button visibility checks
+        boolean pvpNPCNear = map.getPvpNPC().isPlayerNear(player);
+        if (teleportButtonPvpNPC.isVisible() != pvpNPCNear) {
+            teleportButtonPvpNPC.setVisible(pvpNPCNear);
         }
 
-        if (map.getTopNPC().isPlayerNear(player)) {
-            topButton.setVisible(true);
-        } else {
-            if (topButton.isVisible()) {
-                topButton.setVisible(false);
-            }
-            if (leaderBoard.isVisible()) {
+        boolean topNPCNear = map.getTopNPC().isPlayerNear(player);
+        if (topButton.isVisible() != topNPCNear) {
+            topButton.setVisible(topNPCNear);
+            if (!topNPCNear && leaderBoard.isVisible()) {
                 leaderBoard.setVisible(false);
             }
         }
 
-        if (map.getMazeNPC().isPlayerNear(player)) {
-            teleportButtonMazeNPC.setVisible(true);
-        } else {
-            teleportButtonMazeNPC.setVisible(false);
+        boolean mazeNPCNear = map.getMazeNPC().isPlayerNear(player);
+        if (teleportButtonMazeNPC.isVisible() != mazeNPCNear) {
+            teleportButtonMazeNPC.setVisible(mazeNPCNear);
         }
     }
 
@@ -342,29 +344,25 @@ public class GameScene extends JPanel implements Runnable {
 
             playerMP.render(g2d, tileSize);
 
-            // Render the bullet
-            for (int j = 0; j < 1000; j++) {
-                if (playerMP.getBullet()[j] != null) {
-                    if (!playerMP.getBullet()[j].stop) {
-                        int bombScreenX = playerMP.getBullet()[j].getPosiX() - player.getWorldX() + player.getScreenX();
-                        int bombScreenY = playerMP.getBullet()[j].getPosiY() - player.getWorldY() + player.getScreenY();
-                        g2d.drawImage(playerMP.getBullet()[j].getBulletImg(), bombScreenX, bombScreenY, 10, 10, this);
-                    }
+            // Render bullets for current player (optimized)
+            for (objects.entities.Bullet bullet : playerMP.getBullets()) {
+                if (bullet != null && !bullet.stop) {
+                    int bombScreenX = bullet.getPosiX() - player.getWorldX() + player.getScreenX();
+                    int bombScreenY = bullet.getPosiY() - player.getWorldY() + player.getScreenY();
+                    g2d.drawImage(bullet.getBulletImg(), bombScreenX, bombScreenY, 10, 10, this);
                 }
             }
 
-            //Render the bullet all players
-
+            // Render bullets for all players in PvP (optimized)
             if (currentMap.equals("pvp")) {
-                for (PlayerMP playerMP : getMap().players) {
-                    for (int i = 0; i < 1000; i++) {
-                        if (playerMP.getBullet()[i] != null) {
-                            if (!playerMP.getBullet()[i].stop) {
-                                int bulletScreenX = playerMP.getBullet()[i].getPosiX() - player.getWorldX() + player.getScreenX();
-                                int bulletScreenY = playerMP.getBullet()[i].getPosiY() - player.getWorldY() + player.getScreenY();
-
-                                g2d.drawImage(playerMP.getBullet()[i].getBulletImg(), bulletScreenX, bulletScreenY, 10, 10, this);
-                            }
+                for (PlayerMP otherPlayer : getMap().players) {
+                    if (otherPlayer == null) continue;
+                    
+                    for (objects.entities.Bullet bullet : otherPlayer.getBullets()) {
+                        if (bullet != null && !bullet.stop) {
+                            int bulletScreenX = bullet.getPosiX() - player.getWorldX() + player.getScreenX();
+                            int bulletScreenY = bullet.getPosiY() - player.getWorldY() + player.getScreenY();
+                            g2d.drawImage(bullet.getBulletImg(), bulletScreenX, bulletScreenY, 10, 10, this);
                         }
                     }
                 }

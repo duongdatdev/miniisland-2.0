@@ -157,108 +157,40 @@ public class Player extends Entity {
 //    }
 
     public BufferedImage currentSprite() {
-        BufferedImage playerImage = null;
+        // Update animation frame
         countFrames++;
         if (countFrames > 11) {
-            spriteIndex++;
-            if (spriteIndex > 3) {
-                spriteIndex = 0;
-            }
+            spriteIndex = (spriteIndex + 1) % 4; // Optimized modulo operation
             countFrames = 0;
         }
+        
+        // Get the appropriate sprite array based on direction
+        BufferedImage[] currentSpriteArray = null;
         switch (direction) {
             case "UP":
-                if (upImages == null) {
-                    System.err.println("[Player] upImages is null! Returning null for playerImage.");
-                    return null;
-                }
-                if (spriteIndex == 0) {
-                    playerImage = upImages[0];
-                }
-                if (spriteIndex == 1) {
-                    playerImage = upImages[1];
-                }
-                if (spriteIndex == 2) {
-                    playerImage = upImages[2];
-                }
-                if (spriteIndex == 3) {
-                    playerImage = upImages[3];
-                }
+                currentSpriteArray = upImages;
                 break;
             case "DOWN":
-                if (downImages == null) {
-                    System.err.println("[Player] downImages is null! Returning null for playerImage.");
-                    return null;
-                }
-                if (spriteIndex == 0) {
-                    playerImage = downImages[0];
-                }
-                if (spriteIndex == 1) {
-                    playerImage = downImages[1];
-                }
-                if (spriteIndex == 2) {
-                    playerImage = downImages[2];
-                }
-                if (spriteIndex == 3) {
-                    playerImage = downImages[3];
-                }
+                currentSpriteArray = downImages;
                 break;
             case "LEFT":
-                if (leftImages == null) {
-                    System.err.println("[Player] leftImages is null! Returning null for playerImage.");
-                    return null;
-                }
-                if (spriteIndex == 0) {
-                    playerImage = leftImages[0];
-                }
-                if (spriteIndex == 1) {
-                    playerImage = leftImages[1];
-                }
-                if (spriteIndex == 2) {
-                    playerImage = leftImages[2];
-                }
-                if (spriteIndex == 3) {
-                    playerImage = leftImages[3];
-                }
+                currentSpriteArray = leftImages;
                 break;
             case "RIGHT":
-                if (rightImages == null) {
-                    System.err.println("[Player] rightImages is null! Returning null for playerImage.");
-                    return null;
-                }
-                if (spriteIndex == 0) {
-                    playerImage = rightImages[0];
-                }
-                if (spriteIndex == 1) {
-                    playerImage = rightImages[1];
-                }
-                if (spriteIndex == 2) {
-                    playerImage = rightImages[2];
-                }
-                if (spriteIndex == 3) {
-                    playerImage = rightImages[3];
-                }
+                currentSpriteArray = rightImages;
                 break;
             case "STAND":
-                if (standingImages == null) {
-                    System.err.println("[Player] standingImages is null! Returning null for playerImage.");
-                    return null;
-                }
-                if (spriteIndex == 0) {
-                    playerImage = standingImages[0];
-                }
-                if (spriteIndex == 1) {
-                    playerImage = standingImages[1];
-                }
-                if (spriteIndex == 2) {
-                    playerImage = standingImages[2];
-                }
-                if (spriteIndex == 3) {
-                    playerImage = standingImages[3];
-                }
+                currentSpriteArray = standingImages;
                 break;
         }
-        return playerImage;
+        
+        // Validate and return sprite
+        if (currentSpriteArray == null) {
+            System.err.println("[Player] Sprite array for direction '" + direction + "' is null!");
+            return null;
+        }
+        
+        return currentSpriteArray[spriteIndex];
     }
 
     public boolean isMove() {

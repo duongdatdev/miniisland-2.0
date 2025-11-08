@@ -93,77 +93,70 @@ public class Map {
     }
 
     public void draw(Graphics2D g2d, int tileSize) {
-        int worldCol = 0;
-        int worldRow = 0;
-        if (render) {
-
-
-            while (worldCol < mapTileCol && worldRow < mapTileRow) {
+        if (!render) return;
+        
+        // Cache player position for performance
+        int playerWorldX = gameScene.getPlayer().getWorldX();
+        int playerWorldY = gameScene.getPlayer().getWorldY();
+        int playerScreenX = gameScene.getPlayer().getScreenX();
+        int playerScreenY = gameScene.getPlayer().getScreenY();
+        
+        // Calculate visible tile range (optimized culling)
+        int startCol = Math.max(0, (playerWorldX - playerScreenX) / tileSize - 1);
+        int endCol = Math.min(mapTileCol, (playerWorldX + playerScreenX) / tileSize + 2);
+        int startRow = Math.max(0, (playerWorldY - playerScreenY) / tileSize - 1);
+        int endRow = Math.min(mapTileRow, (playerWorldY + playerScreenY) / tileSize + 2);
+        
+        // Draw only visible tiles
+        for (int worldRow = startRow; worldRow < endRow; worldRow++) {
+            for (int worldCol = startCol; worldCol < endCol; worldCol++) {
                 int tileNum = mapTileNum[worldCol][worldRow];
-
+                
                 int worldX = worldCol * tileSize;
                 int worldY = worldRow * tileSize;
+                
+                int screenX = worldX - playerWorldX + playerScreenX;
+                int screenY = worldY - playerWorldY + playerScreenY;
+                
+                g2d.drawImage(tiles[tileNum].getImage(), screenX, screenY, tileSize, tileSize, null);
+            }
+        }
 
-                int screenX = worldX - gameScene.getPlayer().getWorldX() + gameScene.getPlayer().getScreenX();
-                int screenY = worldY - gameScene.getPlayer().getWorldY() + gameScene.getPlayer().getScreenY();
+        renderNPC(g2d);
 
-                if (worldX > gameScene.getPlayer().getWorldX() - gameScene.getPlayer().getScreenX() - tileSize * 2
-                        && worldX < gameScene.getPlayer().getWorldX() + gameScene.getPlayer().getScreenX() + tileSize * 2
-                        && worldY > gameScene.getPlayer().getWorldY() - gameScene.getPlayer().getScreenY() - tileSize * 2
-                        && worldY < gameScene.getPlayer().getWorldY() + gameScene.getPlayer().getScreenY() + tileSize * 2) {
-
-                    g2d.drawImage(tiles[tileNum].getImage(), screenX, screenY, tileSize, tileSize, null);
-
-                }
-
-                worldCol++;
-                if (worldCol == mapTileCol) {
-                    worldCol = 0;
-                    worldRow++;
-                }
-
-
+        // Optimize player rendering
+        Font usernameFont = new Font("Arial", Font.BOLD, 20);
+        g2d.setFont(usernameFont);
+        FontMetrics fm = g2d.getFontMetrics(usernameFont);
+        
+        for (PlayerMP playerMP : players) {
+            if (playerMP == null) continue;
+            
+            int worldX = playerMP.getX();
+            int worldY = playerMP.getY();
+            
+            // Quick bounds check
+            if (Math.abs(worldX - playerWorldX) > playerScreenX + tileSize * 2 ||
+                Math.abs(worldY - playerWorldY) > playerScreenY + tileSize * 2) {
+                continue;
             }
 
-            renderNPC(g2d);
+            int screenX = worldX - playerWorldX + playerScreenX;
+            int screenY = worldY - playerWorldY + playerScreenY;
 
-            for (PlayerMP playerMP : players) {
+            // Draw player sprite
+            g2d.drawImage(playerMP.getPlayer().currentSprite(), screenX, screenY, tileSize, tileSize, null);
 
-                if (playerMP != null) {
-                    int worldX = playerMP.getX();
-                    int worldY = playerMP.getY();
+            // Draw username (optimized)
+            String username = playerMP.getUsername();
+            int stringWidth = fm.stringWidth(username);
+            int usernameX = screenX + (tileSize - stringWidth) / 2;
+            g2d.drawString(username, usernameX, screenY);
 
-                    int screenX = worldX - gameScene.getPlayer().getWorldX() + gameScene.getPlayer().getScreenX();
-                    int screenY = worldY - gameScene.getPlayer().getWorldY() + gameScene.getPlayer().getScreenY();
-
-                    if (worldX > gameScene.getPlayer().getWorldX() - gameScene.getPlayer().getScreenX() - tileSize * 2
-                            && worldX < gameScene.getPlayer().getWorldX() + gameScene.getPlayer().getScreenX() + tileSize * 2
-                            && worldY > gameScene.getPlayer().getWorldY() - gameScene.getPlayer().getScreenY() - tileSize * 2
-                            && worldY < gameScene.getPlayer().getWorldY() + gameScene.getPlayer().getScreenY() + tileSize * 2) {
-
-                        g2d.drawImage(playerMP.getPlayer().currentSprite(), screenX, screenY, tileSize, tileSize, null);
-
-                        // Calculate the center of the player's sprite
-                        int centerX = screenX + tileSize / 2;
-
-                        // Get the width of the username string
-                        int stringWidth = g2d.getFontMetrics().stringWidth(playerMP.getUsername());
-
-                        // Adjust the x-coordinate of the username to center it
-                        int usernameX = centerX - stringWidth / 2;
-
-                        // Draw the username at the calculated position
-                        g2d.setFont(new Font("Arial", Font.BOLD, 20));
-                        g2d.drawString(playerMP.getUsername(), usernameX, screenY);
-
-                        BufferedImage chatImage = playerMP.getChatImage();
-                        if (chatImage != null) {
-                            int chatImageWidth = chatImage.getWidth();
-                            int chatImageHeight = chatImage.getHeight();
-                            g2d.drawImage(chatImage, screenX - 50, screenY - 20 - chatImageHeight, chatImageWidth, chatImageHeight, null);
-                        }
-                    }
-                }
+            // Draw chat image if present
+            BufferedImage chatImage = playerMP.getChatImage();
+            if (chatImage != null) {
+                g2d.drawImage(chatImage, screenX - 50, screenY - 20 - chatImage.getHeight(), null);
             }
         }
     }

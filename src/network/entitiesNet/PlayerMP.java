@@ -10,6 +10,7 @@ import panes.chat.DialogText;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 
 public class PlayerMP {
     private Player player;
@@ -19,9 +20,9 @@ public class PlayerMP {
     private int lastDirection = 1;
     private String username;
 
-    //Bombs
-    private Bullet bullet[] = new Bullet[1000];
-    private int curBullet = 0;
+    //Bullets - Optimized with ArrayList
+    private ArrayList<Bullet> bullets = new ArrayList<>();
+    private static final int MAX_BULLETS = 100; // Reasonable limit
 
     private BufferedImage chatImage;
     private Timer chatImageTimer;
@@ -147,33 +148,34 @@ public class PlayerMP {
 
     public void shot() {
         long currentTime = System.currentTimeMillis();
-        if (currentTime - lastShotTime >= 300) { // 300 milliseconds have passed since the last shot
-            try {
-                if (GameScene.getInstance().getCurrentMap().equals("pvp")) {
+        if (currentTime - lastShotTime >= 300) { // 300 milliseconds cooldown
+            if (GameScene.getInstance().getCurrentMap().equals("pvp")) {
+                // Clean up stopped bullets before adding new ones
+                bullets.removeIf(b -> b.stop);
+                
+                if (bullets.size() < MAX_BULLETS) {
                     int bombDirection = direction != 0 ? direction : lastDirection;
-                    bullet[curBullet] = new Bullet(this.getX(), this.getY(), bombDirection, username);
-                    bullet[curBullet].startBombThread(true);
-                    curBullet++;
-
+                    Bullet newBullet = new Bullet(this.getX(), this.getY(), bombDirection, username);
+                    newBullet.startBombThread(true);
+                    bullets.add(newBullet);
+                    
                     Client.getGameClient().sendToServer(new Protocol().ShotPacket(username));
                 }
-            } catch (Exception e) {
-                System.out.println("Out of bullets");
             }
-            lastShotTime = currentTime; // Update the last shot time
+            lastShotTime = currentTime;
         }
     }
 
     public void Shot() {
-        try {
+        // Clean up stopped bullets
+        bullets.removeIf(b -> b.stop);
+        
+        if (bullets.size() < MAX_BULLETS) {
             int bombDirection = direction != 0 ? direction : lastDirection;
-            bullet[curBullet] = new Bullet(this.getX(), this.getY(), bombDirection, username);
-            bullet[curBullet].startBombThread(false);
-            curBullet++;
-        } catch (Exception e) {
-            System.out.println("Out of bullets");
+            Bullet newBullet = new Bullet(this.getX(), this.getY(), bombDirection, username);
+            newBullet.startBombThread(false);
+            bullets.add(newBullet);
         }
-
     }
 
     public int getDirection() {
@@ -205,8 +207,14 @@ public class PlayerMP {
         this.direction = direction;
     }
 
+    public ArrayList<Bullet> getBullets() {
+        return bullets;
+    }
+    
+    // Deprecated: Keep for backward compatibility, but use getBullets() instead
+    @Deprecated
     public Bullet[] getBullet() {
-        return bullet;
+        return bullets.toArray(new Bullet[0]);
     }
 
     public String getUsername() {
