@@ -29,10 +29,13 @@ public class Player extends Entity {
         this.gameScene = gameScene;
 
         hitBox = new Rectangle();
-        hitBox.width = 28;
-        hitBox.height = 18;
-        hitBox.x = 10;
-        hitBox.y = 24;
+        // Based on actual sprite visible in game
+        // Character body occupies roughly center 16-18px of 32px tile
+        // Need larger hitbox to prevent clipping into walls
+        hitBox.width = 18;   // Wider body to match sprite (~56% of tile)
+        hitBox.height = 24;  // Taller to cover head to feet (~75% of tile)
+        hitBox.x = 7;        // Center: (32-18)/2 = 7
+        hitBox.y = 6;        // Start slightly below top to account for head
 
         setDefaultPosition();
         setDefaultSpeed();
@@ -88,47 +91,75 @@ public class Player extends Entity {
 
         if (isMove()) {
 
+            // Store old position for rollback
+            int oldX = worldX;
+            int oldY = worldY;
+            
             int futureX = worldX;
             int futureY = worldY;
+            
+            boolean movingX = false;
+            boolean movingY = false;
 
             if (keyHandler.isUp()) {
                 direction = "UP";
                 futureY -= speed;
+                movingY = true;
             }
             if (keyHandler.isDown()) {
                 direction = "DOWN";
                 futureY += speed;
+                movingY = true;
             }
             if (keyHandler.isLeft()) {
                 direction = "LEFT";
                 futureX -= speed;
+                movingX = true;
             }
             if (keyHandler.isRight()) {
                 direction = "RIGHT";
                 futureX += speed;
+                movingX = true;
             }
 
             count = 1;
-            collision = false;
-            flagUpdate = true;
-
-            int finalFutureX = futureX;
-            int finalFutureY = futureY;
-            gameScene.getCollisionChecker().checkTile(this, () -> {
-                if (!collision) {
-                    // Check if the current tile is a wall
-                    int currentTileNum = gameScene.getMap().getMapTileNum()[finalFutureX / gameScene.getTileSize()][finalFutureY / gameScene.getTileSize()];
-                    if (gameScene.getMap().getTiles()[currentTileNum].getType() != TileType.Wall) {
-                        // Move player in the opposite direction
-                        if (flagUpdate) {
-                            worldX = finalFutureX;
-                            worldY = finalFutureY;
-                        }
+            
+            // Check X-axis collision separately
+            if (movingX) {
+                collision = false;
+                flagUpdate = true;
+                worldX = futureX; // Temporarily set for collision check
+                
+                gameScene.getCollisionChecker().checkTile(this, () -> {
+                    if (collision || !flagUpdate) {
+                        // Rollback X movement if collision detected
+                        worldX = oldX;
                     }
-//                } else {
-//                    direction = "STAND";
-                }
-            });
+                });
+                
+                futureX = worldX; // Update futureX with actual position after collision check
+                worldX = oldX; // Reset for Y check
+            }
+            
+            // Check Y-axis collision separately
+            if (movingY) {
+                collision = false;
+                flagUpdate = true;
+                worldY = futureY; // Temporarily set for collision check
+                
+                gameScene.getCollisionChecker().checkTile(this, () -> {
+                    if (collision || !flagUpdate) {
+                        // Rollback Y movement if collision detected
+                        worldY = oldY;
+                    }
+                });
+                
+                futureY = worldY; // Update futureY with actual position after collision check
+            }
+            
+            // Apply final validated movement
+            worldX = futureX;
+            worldY = futureY;
 
 
         } else if (isSpace()) {
@@ -145,6 +176,13 @@ public class Player extends Entity {
 
     public void render(Graphics2D g2d, int tileSize) {
         g2d.drawImage(currentSprite(), screenX, screenY, tileSize * scale, tileSize * scale, null);
+        
+        // DEBUG: Draw hitbox to check collision (toggle by comment/uncomment)
+        // Uncomment the 4 lines below to see red hitbox in game:
+        g2d.setColor(new Color(255, 0, 0, 100)); // Red semi-transparent
+        g2d.fillRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
+        g2d.setColor(Color.RED);
+        g2d.drawRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
     }
 
     public boolean isSpace() {

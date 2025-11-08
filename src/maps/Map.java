@@ -89,6 +89,9 @@ public class Map {
             tiles[i].setType(TileType.Water);
         } else if (i == 78) {
             tiles[i].setType(TileType.Wall);
+        } else {
+            // Set default type for all other tiles (safe to walk on)
+            tiles[i].setType(TileType.Grass);
         }
     }
 
@@ -119,6 +122,10 @@ public class Map {
                 int screenY = worldY - playerWorldY + playerScreenY;
                 
                 g2d.drawImage(tiles[tileNum].getImage(), screenX, screenY, tileSize, tileSize, null);
+                
+                // DEBUG: Draw collision tiles overlay
+                // Uncomment to see collision tiles in different colors
+                drawDebugCollisionTiles(g2d, tileNum, screenX, screenY, tileSize);
             }
         }
 
@@ -347,5 +354,61 @@ public class Map {
 
     public void setMazeNPC(NPC mazeNPC) {
         this.mazeNPC = mazeNPC;
+    }
+
+    /**
+     * DEBUG: Draw collision overlay for tiles
+     * Shows different colors for different tile types:
+     * - Wall: Red semi-transparent
+     * - Water: Blue semi-transparent  
+     * - FinishLine: Green semi-transparent
+     * - Hole: Yellow semi-transparent
+     * - Safe tiles: No overlay
+     */
+    private void drawDebugCollisionTiles(Graphics2D g2d, int tileNum, int screenX, int screenY, int tileSize) {
+        // Safety checks to prevent crashes
+        if (tiles == null || tileNum < 0 || tileNum >= tiles.length) {
+            return;
+        }
+        
+        if (tiles[tileNum] == null) {
+            return;
+        }
+        
+        TileType type = tiles[tileNum].getType();
+        
+        // If type is null, treat as safe tile (no overlay)
+        if (type == null) {
+            return;
+        }
+        
+        Color debugColor = null;
+        
+        switch (type) {
+            case Wall:
+                debugColor = new Color(255, 0, 0, 80); // Red
+                break;
+            case Water:
+                debugColor = new Color(0, 0, 255, 80); // Blue
+                break;
+            case FinishLine:
+                debugColor = new Color(0, 255, 0, 80); // Green
+                break;
+            case Hole:
+                debugColor = new Color(255, 255, 0, 80); // Yellow
+                break;
+            default:
+                return; // No overlay for safe tiles (Grass, etc.)
+        }
+        
+        if (debugColor != null) {
+            g2d.setColor(debugColor);
+            g2d.fillRect(screenX, screenY, tileSize, tileSize);
+            
+            // Draw border
+            g2d.setColor(new Color(debugColor.getRed(), debugColor.getGreen(), debugColor.getBlue(), 200));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRect(screenX, screenY, tileSize, tileSize);
+        }
     }
 }

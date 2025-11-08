@@ -27,7 +27,11 @@ public class Collision {
 
         int tileNum1, tileNum2;
 
-        System.out.println(entity.getDirection());
+        // DEBUG: Uncomment to see collision checking info
+        // System.out.println("[Collision] Direction: " + entity.getDirection() + 
+        //     " | Pos: (" + entity.getWorldX() + "," + entity.getWorldY() + 
+        //     ") | Hitbox: " + entity.getHitBox());
+        
         switch (entity.getDirection()) {
             case "UP":
                 entityTopRow = (entityTopWorldY - entity.getSpeed()) / gameScene.getTileSize();
@@ -64,13 +68,21 @@ public class Collision {
         if (checkTile(tileNum1, tileNum2, TileType.Wall)) {
             entity.setCollision(true);
             entity.setFlagUpdate(false);
+            // DEBUG: Uncomment to see wall collision
+            // System.out.println("[Collision] Hit WALL! Tiles: " + tileNum1 + ", " + tileNum2);
         } else if (checkTile(tileNum1, tileNum2, TileType.Water)) {
             handleCollisionWater(entity);
             entity.setFlagUpdate(false);
+            // DEBUG: Uncomment to see water collision
+            // System.out.println("[Collision] Hit WATER! Respawning...");
         } else if (checkTile(tileNum1, tileNum2, TileType.FinishLine)) {
             gameScene.winMaze();
+            // DEBUG: Uncomment to see finish line
+            // System.out.println("[Collision] Hit FINISH LINE! You win!");
         } else if (checkTile(tileNum1, tileNum2, TileType.Hole)) {
 //            gameScene.loseMaze();
+            // DEBUG: Uncomment to see hole collision
+            // System.out.println("[Collision] Hit HOLE!");
         }
     }
 
