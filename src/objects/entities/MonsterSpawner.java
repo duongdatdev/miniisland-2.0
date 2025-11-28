@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.Random;
 
 /**
- * MonsterSpawner quản lý việc spawn quái vật trong chế độ Đối kháng điểm số.
- * Spawn quái theo wave với độ khó tăng dần.
+ * MonsterSpawner manages monster spawning in Score Battle mode.
+ * Spawns monsters in waves with increasing difficulty.
  */
 public class MonsterSpawner {
     private ArrayList<Monster> monsters;
@@ -42,7 +42,7 @@ public class MonsterSpawner {
     }
     
     /**
-     * Bắt đầu spawner
+     * Start the spawner
      */
     public void start() {
         isActive = true;
@@ -52,12 +52,12 @@ public class MonsterSpawner {
         monsters.clear();
         nextMonsterId = 0;
         
-        // Spawn wave đầu tiên
+        // Spawn first wave
         spawnWave();
     }
     
     /**
-     * Dừng spawner và clear tất cả quái
+     * Stop spawner and clear all monsters
      */
     public void stop() {
         isActive = false;
@@ -65,19 +65,19 @@ public class MonsterSpawner {
     }
     
     /**
-     * Update spawner - gọi mỗi frame
+     * Update spawner - called each frame
      */
     public void update(Player targetPlayer) {
         if (!isActive) return;
         
-        // Update tất cả monsters
+        // Update all monsters
         for (Monster monster : monsters) {
             if (monster.isAlive()) {
                 monster.updateAI(targetPlayer);
             }
         }
         
-        // Xóa quái đã chết
+        // Remove dead monsters
         monsters.removeIf(m -> !m.isAlive());
         
         // Spawn timer
@@ -87,19 +87,19 @@ public class MonsterSpawner {
             spawnTimer = 0;
         }
         
-        // Kiểm tra chuyển wave
+        // Check wave transition
         if (monstersKilledInWave >= monstersPerWave && monsters.isEmpty()) {
             nextWave();
         }
     }
     
     /**
-     * Spawn một quái mới
+     * Spawn a new monster
      */
     private void spawnMonster() {
         if (monsters.size() >= maxMonsters) return;
         
-        // Chọn vị trí spawn ngẫu nhiên (tránh spawn gần player)
+        // Choose random spawn position (avoid spawning near player)
         int playerX = gameScene.getPlayer().getWorldX();
         int playerY = gameScene.getPlayer().getWorldY();
         
@@ -111,7 +111,7 @@ public class MonsterSpawner {
             attempts++;
         } while (Math.sqrt(Math.pow(spawnX - playerX, 2) + Math.pow(spawnY - playerY, 2)) < 200 && attempts < 10);
         
-        // Chọn loại quái dựa trên wave
+        // Select monster type based on wave
         MonsterType type = selectMonsterType();
         
         Monster monster = new Monster(nextMonsterId++, spawnX, spawnY, type);
@@ -119,7 +119,7 @@ public class MonsterSpawner {
     }
     
     /**
-     * Spawn một wave quái
+     * Spawn a wave of monsters
      */
     private void spawnWave() {
         int toSpawn = Math.min(monstersPerWave, maxMonsters - monsters.size());
@@ -128,7 +128,7 @@ public class MonsterSpawner {
             spawnMonster();
         }
         
-        // Spawn boss mỗi 5 waves
+        // Spawn boss every 5 waves
         if (waveNumber % 5 == 0 && monsters.size() < maxMonsters) {
             int playerX = gameScene.getPlayer().getWorldX();
             int playerY = gameScene.getPlayer().getWorldY();
@@ -142,21 +142,21 @@ public class MonsterSpawner {
     }
     
     /**
-     * Chuyển sang wave tiếp theo
+     * Transition to next wave
      */
     private void nextWave() {
         waveNumber++;
         monstersKilledInWave = 0;
         
-        // Tăng độ khó
+        // Increase difficulty
         monstersPerWave = Math.min(monstersPerWave + 2, 15);
-        spawnInterval = Math.max(spawnInterval - 10, 60); // Spawn nhanh hơn
+        spawnInterval = Math.max(spawnInterval - 10, 60); // Spawn faster
         
         spawnWave();
     }
     
     /**
-     * Chọn loại quái dựa trên wave hiện tại
+     * Select monster type based on current wave
      */
     private MonsterType selectMonsterType() {
         int roll = random.nextInt(100);
@@ -179,8 +179,8 @@ public class MonsterSpawner {
     }
     
     /**
-     * Kiểm tra bullet collision với tất cả monsters
-     * Trả về goldReward nếu monster bị tiêu diệt, 0 nếu không
+     * Check bullet collision with all monsters
+     * Returns goldReward if monster is killed, 0 otherwise
      */
     public int checkBulletCollision(Bullet bullet, String shooterUsername) {
         for (Monster monster : monsters) {
@@ -199,8 +199,8 @@ public class MonsterSpawner {
     }
     
     /**
-     * Kiểm tra player collision với tất cả monsters
-     * Trả về damage nếu bị tấn công, 0 nếu không
+     * Check player collision with all monsters
+     * Returns damage if attacked, 0 otherwise
      */
     public int checkPlayerCollision(Player player) {
         for (Monster monster : monsters) {
@@ -212,7 +212,7 @@ public class MonsterSpawner {
     }
     
     /**
-     * Lấy monster theo ID
+     * Get monster by ID
      */
     public Monster getMonster(int id) {
         for (Monster monster : monsters) {
@@ -224,7 +224,7 @@ public class MonsterSpawner {
     }
     
     /**
-     * Thêm monster từ server
+     * Add monster from server
      */
     public void addMonster(int id, int x, int y, String typeStr) {
         MonsterType type;
@@ -239,14 +239,14 @@ public class MonsterSpawner {
     }
     
     /**
-     * Xóa monster theo ID
+     * Remove monster by ID
      */
     public void removeMonster(int id) {
         monsters.removeIf(m -> m.getId() == id);
     }
     
     /**
-     * Cập nhật vị trí monster từ server
+     * Update monster position from server
      */
     public void updateMonster(int id, int x, int y, int health) {
         Monster monster = getMonster(id);

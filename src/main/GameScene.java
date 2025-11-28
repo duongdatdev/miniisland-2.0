@@ -310,7 +310,7 @@ public class GameScene extends JPanel implements Runnable {
 
         // Update PvP map game logic if in pvp mode
         if (currentMap.equals("pvp")) {
-            // Nhấn SPACE để bắt đầu/restart game khi chưa bắt đầu hoặc đã kết thúc
+            // Press SPACE to start/restart game when not started or ended
             if (!pvpMap.isGameStarted() || pvpMap.isGameEnded()) {
                 if (keyHandler.isSpace()) {
                     pvpMap.startGame();
@@ -318,6 +318,19 @@ public class GameScene extends JPanel implements Runnable {
                 }
             } else {
                 pvpMap.update();
+            }
+        }
+        
+        // Update Maze map game logic if in maze mode
+        if (currentMap.equals("maze")) {
+            mazeMap.update(player);
+            
+            // Handle game over - press SPACE to return to lobby
+            if (mazeMap.isGameOver() && mazeMap.canRestart() && keyHandler.isSpace()) {
+                map.getMazeNPC().setWorldX(2092);
+                map.getMazeNPC().setWorldY(1075);
+                mazeMap.removeAllPlayers();
+                changeToLobby(mazeMap);
             }
         }
 
@@ -405,9 +418,17 @@ public class GameScene extends JPanel implements Runnable {
     public void changeToMazeMap() {
         remove(loadingPanel);
         currentMap = "maze";
+        
+        // Start maze mode with enemies and traps
+        mazeMap.startMazeMode();
     }
 
     public void changeToLobby(Map map) {
+        // Stop maze mode if leaving from maze
+        if (currentMap.equals("maze")) {
+            mazeMap.stopMazeMode();
+        }
+        
         player.setDefaultPosition();
 
         currentMap = "lobby";
@@ -437,6 +458,9 @@ public class GameScene extends JPanel implements Runnable {
     }
 
     public void winMaze() {
+        map.getMazeNPC().setWorldX(2092);
+        map.getMazeNPC().setWorldY(1075);
+        mazeMap.removeAllPlayers();
         changeToLobby(mazeMap);
 
         Client.getGameClient().sendToServer(new Protocol().winMazePacket(playerMP.getUsername()));

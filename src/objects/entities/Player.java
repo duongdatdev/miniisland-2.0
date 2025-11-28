@@ -23,6 +23,20 @@ public class Player extends Entity {
     private String lastDirection = "DOWN";
 
     private int state = 0;
+    
+    // Health system for maze mode
+    private int health = 100;
+    private int maxHealth = 100;
+    private boolean isAlive = true;
+    
+    // Invincibility frames after taking damage
+    private int invincibilityFrames = 0;
+    private static final int INVINCIBILITY_DURATION = 60; // 1 second at 60fps
+    
+    // Slow effect from traps
+    private int slowEffectTimer = 0;
+    private float speedMultiplier = 1.0f;
+    private int baseSpeed = 3;
 
     public Player(GameScene gameScene, KeyHandler keyHandler) {
         this.keyHandler = keyHandler;
@@ -76,7 +90,8 @@ public class Player extends Entity {
     }
 
     private void setDefaultSpeed() {
-        speed = 3;
+        baseSpeed = 3;
+        speed = baseSpeed;
     }
 
     //Counter for the number of times the player has moved
@@ -86,6 +101,19 @@ public class Player extends Entity {
      * Updates the player's position and direction
      */
     public void update() {
+        // Update invincibility frames
+        if (invincibilityFrames > 0) {
+            invincibilityFrames--;
+        }
+        
+        // Update slow effect
+        if (slowEffectTimer > 0) {
+            slowEffectTimer--;
+            if (slowEffectTimer <= 0) {
+                speedMultiplier = 1.0f;
+                speed = baseSpeed;
+            }
+        }
 
         if (isMove()) {
 
@@ -158,11 +186,15 @@ public class Player extends Entity {
             // Apply final validated movement
             worldX = futureX;
             worldY = futureY;
-
-
-        } else if (isSpace()) {
+        }
+        
+        // Allow shooting while moving - check space key independently
+        if (isSpace()) {
             gameScene.getPlayerMP().shot();
-        } else {
+        }
+        
+        // Handle standing state when not moving
+        if (!isMove()) {
             if (count == 1) {
                 lastDirection = direction;
                 direction = "STAND";
@@ -173,14 +205,133 @@ public class Player extends Entity {
     }
 
     public void render(Graphics2D g2d, int tileSize) {
+        // Flash effect when invincible (hit recently)
+        if (invincibilityFrames > 0 && (invincibilityFrames / 5) % 2 == 0) {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+        }
+        
         g2d.drawImage(currentSprite(), screenX, screenY, tileSize * scale, tileSize * scale, null);
+        
+        // Reset composite
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
         
         // DEBUG: Draw hitbox to check collision (toggle by comment/uncomment)
         // Uncomment the 4 lines below to see red hitbox in game:
-        g2d.setColor(new Color(255, 0, 0, 100)); // Red semi-transparent
-        g2d.fillRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
+        // g2d.setColor(new Color(255, 0, 0, 100)); // Red semi-transparent
+        // g2d.fillRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
+        // g2d.setColor(Color.RED);
+        // g2d.drawRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
+    }
+    
+    /**
+     * Render player health bar (for maze mode)
+     */
+    public void renderHealthBar(Graphics2D g2d, int screenWidth) {
+        int barWidth = 200;
+        int barHeight = 20;
+        int barX = 20;
+        int barY = 20;
+        
+        // Background (dark gray)
+        g2d.setColor(new Color(50, 50, 50));
+        g2d.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Health bar (gradient from green to red based on health)
+        float healthPercent = (float) health / maxHealth;
+        int healthWidth = (int) (barWidth * healthPercent);
+        
+        // Color based on health percentage
+        Color healthColor;
+        if (healthPercent > 0.6f) {
+            healthColor = new Color(50, 200, 50); // Green
+        } else if (healthPercent > 0.3f) {
+            healthColor = new Color(255, 200, 0); // Yellow
+        } else {
+            healthColor = new Color(200, 50, 50); // Red
+        }
+        
+        g2d.setColor(healthColor);
+        g2d.fillRect(barX, barY, healthWidth, barHeight);
+        
+        // Border
+        g2d.setColor(Color.WHITE);
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRect(barX, barY, barWidth, barHeight);
+        
+        // Health text
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        g2d.setColor(Color.WHITE);
+        String healthText = health + " / " + maxHealth;
+        FontMetrics fm = g2d.getFontMetrics();
+        int textX = barX + (barWidth - fm.stringWidth(healthText)) / 2;
+        int textY = barY + (barHeight + fm.getAscent()) / 2 - 2;
+        g2d.drawString(healthText, textX, textY);
+        
+        // Heart icon
         g2d.setColor(Color.RED);
-        g2d.drawRect(screenX + hitBox.x, screenY + hitBox.y, hitBox.width, hitBox.height);
+        g2d.setFont(new Font("Arial", Font.BOLD, 18));
+        g2d.drawString("♥", barX + barWidth + 10, barY + 16);
+    }
+    
+    /**
+     * Take damage from enemies or traps
+     * @return true if player died
+     */
+    public boolean takeDamage(int damage) {
+        if (!isAlive || invincibilityFrames > 0) return false;
+        
+        health -= damage;
+        invincibilityFrames = INVINCIBILITY_DURATION;
+        
+        if (health <= 0) {
+            health = 0;
+            isAlive = false;
+            return true; // Player died
+        }
+        return false;
+    }
+    
+    /**
+     * Instant death (for deadly traps)
+     */
+    public void instantDeath() {
+        health = 0;
+        isAlive = false;
+    }
+    
+    /**
+     * Heal the player
+     */
+    public void heal(int amount) {
+        health = Math.min(health + amount, maxHealth);
+    }
+    
+    /**
+     * Apply slow effect
+     */
+    public void applySlowEffect(float multiplier, int duration) {
+        speedMultiplier = multiplier;
+        slowEffectTimer = duration;
+        speed = (int) (baseSpeed * speedMultiplier);
+    }
+    
+    /**
+     * Reset player for maze mode
+     */
+    public void resetForMaze() {
+        health = maxHealth;
+        isAlive = true;
+        invincibilityFrames = 0;
+        slowEffectTimer = 0;
+        speedMultiplier = 1.0f;
+        speed = baseSpeed;
+    }
+    
+    /**
+     * Check if player is invincible
+     */
+    public boolean isInvincible() {
+        return invincibilityFrames > 0;
     }
 
     public boolean isSpace() {
@@ -268,6 +419,14 @@ public class Player extends Entity {
     public void setLastDirection(String lastDirection) {
         this.lastDirection = lastDirection;
     }
+    
+    // Health getters and setters
+    public int getHealth() { return health; }
+    public void setHealth(int health) { this.health = health; }
+    public int getMaxHealth() { return maxHealth; }
+    public void setMaxHealth(int maxHealth) { this.maxHealth = maxHealth; }
+    public boolean isPlayerAlive() { return isAlive; }
+    public void setAlive(boolean alive) { this.isAlive = alive; }
 
     @Override
     public void update(float delta) {

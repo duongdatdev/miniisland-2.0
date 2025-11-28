@@ -328,15 +328,13 @@ public class Monster extends Entity {
     
     @Override
     public void update(float delta) {
-        // Được gọi từ bên ngoài với target player
+        // Called from outside with target player
     }
-    
+
     @Override
     public void render(Graphics graphics) {
-        // Sử dụng phương thức render với tham số cụ thể
-    }
-    
-    // Getters and Setters
+        // Use specific render method with parameters
+    }    // Getters and Setters
     public int getId() {
         return id;
     }
