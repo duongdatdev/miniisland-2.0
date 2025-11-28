@@ -29,13 +29,11 @@ public class Player extends Entity {
         this.gameScene = gameScene;
 
         hitBox = new Rectangle();
-        // Based on actual sprite visible in game
-        // Character body occupies roughly center 16-18px of 32px tile
-        // Need larger hitbox to prevent clipping into walls
-        hitBox.width = 18;   // Wider body to match sprite (~56% of tile)
-        hitBox.height = 24;  // Taller to cover head to feet (~75% of tile)
-        hitBox.x = 7;        // Center: (32-18)/2 = 7
-        hitBox.y = 6;        // Start slightly below top to account for head
+    
+        hitBox.width = 12;   
+        hitBox.height = 20;  
+        hitBox.x = 20;       
+        hitBox.y = 20;       
 
         setDefaultPosition();
         setDefaultSpeed();

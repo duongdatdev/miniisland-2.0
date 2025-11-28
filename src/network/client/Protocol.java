@@ -81,4 +81,94 @@ public class Protocol {
         message = "Exit" + username;
         return message;
     }
+    
+    // ============== Score Battle Mode Protocols ==============
+    
+    /**
+     * Gửi yêu cầu bắt đầu game Score Battle
+     */
+    public String startScoreBattlePacket(String username) {
+        message = "StartScoreBattle," + username;
+        return message;
+    }
+    
+    /**
+     * Gửi cập nhật điểm số của người chơi
+     */
+    public String scoreUpdatePacket(String username, int score) {
+        message = "ScoreUpdate," + username + "," + score;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo tiêu diệt quái
+     */
+    public String monsterKillPacket(String username, int monsterId, int goldEarned) {
+        message = "MonsterKill," + username + "," + monsterId + "," + goldEarned;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo người chơi bị quái tấn công
+     */
+    public String playerDamagedPacket(String username, int damage, int remainingHealth) {
+        message = "PlayerDamaged," + username + "," + damage + "," + remainingHealth;
+        return message;
+    }
+    
+    /**
+     * Gửi yêu cầu cập nhật bảng xếp hạng Score Battle
+     */
+    public String scoreBattleLeaderboardPacket() {
+        message = "ScoreBattleLeaderboard";
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo game kết thúc
+     */
+    public String scoreBattleEndPacket(String username, int finalScore) {
+        message = "ScoreBattleEnd," + username + "," + finalScore;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo spawn quái từ server
+     */
+    public String spawnMonsterPacket(int monsterId, int x, int y, String monsterType) {
+        message = "SpawnMonster," + monsterId + "," + x + "," + y + "," + monsterType;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo cập nhật vị trí quái
+     */
+    public String updateMonsterPacket(int monsterId, int x, int y, int health) {
+        message = "UpdateMonster," + monsterId + "," + x + "," + y + "," + health;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo xóa quái
+     */
+    public String removeMonsterPacket(int monsterId) {
+        message = "RemoveMonster," + monsterId;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo đồng bộ thời gian còn lại
+     */
+    public String syncTimePacket(int remainingTime) {
+        message = "SyncTime," + remainingTime;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo wave mới bắt đầu
+     */
+    public String newWavePacket(int waveNumber) {
+        message = "NewWave," + waveNumber;
+        return message;
+    }
 }

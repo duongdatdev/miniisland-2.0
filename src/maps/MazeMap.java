@@ -41,13 +41,11 @@ public class MazeMap extends Map {
                         mapTileNum[col][row] = 3;
                         System.out.print(mapTileNum[col][row] + " ");
                         col++;
-                    }
-                    else if (charArray[col] == hole) {
+                    } else if (charArray[col] == hole) {
                         mapTileNum[col][row] = 4;
                         System.out.print(mapTileNum[col][row] + " ");
                         col++;
-                    }
-                    else if (charArray[col] == finishLine){
+                    } else if (charArray[col] == finishLine) {
                         mapTileNum[col][row] = 2;
                         System.out.print(mapTileNum[col][row] + " ");
                         col++;
@@ -59,39 +57,36 @@ public class MazeMap extends Map {
                     col = 0;
                     row++;
                 }
+            }
+            process.run();
+        } catch (Exception e)
+
+        {
+            e.printStackTrace();
         }
-        process.run();
-    } catch(
-    Exception e)
-
-    {
-        e.printStackTrace();
     }
-}
-
-@Override
-public void setTileType(int i) {
-    if (i == 4) {
-        tiles[i].setType(TileType.Hole);
-    }
-    else if(i == 0){
-        tiles[i].setType(TileType.Wall);
-    }
-    else if(i == 2){
-        tiles[i].setType(TileType.FinishLine);
-    }
-}
 
     @Override
     protected void renderNPC(Graphics2D g2d) {
         gameScene.getLobbyMap().getMazeNPC().checkDraw(gameScene.getPlayer(), g2d);
     }
 
-    public void clear() {
-    for (int i = 0; i < mapTileCol; i++) {
-        for (int j = 0; j < mapTileRow; j++) {
-            mapTileNum[i][j] = 0;
+    @Override
+    public void setTileType(int i) {
+        if (i == 4) {
+            tiles[i].setType(TileType.Hole);
+        } else if (i == 0) {
+            tiles[i].setType(TileType.Wall);
+        } else if (i == 2) {
+            tiles[i].setType(TileType.FinishLine);
         }
     }
-}
+
+    public void clear() {
+        for (int i = 0; i < mapTileCol; i++) {
+            for (int j = 0; j < mapTileRow; j++) {
+                mapTileNum[i][j] = 0;
+            }
+        }
+    }
 }

@@ -273,6 +273,100 @@ public class ClientRecivingThread extends Thread {
                         gameScene.removePlayer(username);
                     }
                 }
+                // ============== Score Battle Mode Messages ==============
+                else if (sentence.startsWith("ScoreBattleStart")) {
+                    // Server thông báo bắt đầu game
+                    String[] parts = sentence.split(",");
+                    int timeLimit = parts.length > 1 ? Integer.parseInt(parts[1]) : 180;
+                    
+                    gameScene.getPvpMap().setGameTimeLimit(timeLimit);
+                    gameScene.getPvpMap().startGame();
+                    System.out.println("Score Battle started! Time limit: " + timeLimit + "s");
+                    
+                } else if (sentence.startsWith("ScoreBattleEnd")) {
+                    // Server thông báo kết thúc game
+                    gameScene.getPvpMap().endGame();
+                    System.out.println("Score Battle ended!");
+                    
+                } else if (sentence.startsWith("ScoreUpdate")) {
+                    // Cập nhật điểm của người chơi khác
+                    String[] parts = sentence.split(",");
+                    String username = parts[1];
+                    int score = Integer.parseInt(parts[2]);
+                    
+                    if (!username.equals(clientPlayer.getUsername())) {
+                        gameScene.getPvpMap().updatePlayerScore(username, score);
+                    }
+                    
+                } else if (sentence.startsWith("SpawnMonster")) {
+                    // Server spawn quái mới
+                    String[] parts = sentence.split(",");
+                    int monsterId = Integer.parseInt(parts[1]);
+                    int x = Integer.parseInt(parts[2]);
+                    int y = Integer.parseInt(parts[3]);
+                    String monsterType = parts[4];
+                    
+                    gameScene.getPvpMap().getMonsterSpawner().addMonster(monsterId, x, y, monsterType);
+                    
+                } else if (sentence.startsWith("UpdateMonster")) {
+                    // Server cập nhật vị trí quái
+                    String[] parts = sentence.split(",");
+                    int monsterId = Integer.parseInt(parts[1]);
+                    int x = Integer.parseInt(parts[2]);
+                    int y = Integer.parseInt(parts[3]);
+                    int health = Integer.parseInt(parts[4]);
+                    
+                    gameScene.getPvpMap().getMonsterSpawner().updateMonster(monsterId, x, y, health);
+                    
+                } else if (sentence.startsWith("RemoveMonster")) {
+                    // Server xóa quái
+                    String[] parts = sentence.split(",");
+                    int monsterId = Integer.parseInt(parts[1]);
+                    
+                    gameScene.getPvpMap().getMonsterSpawner().removeMonster(monsterId);
+                    
+                } else if (sentence.startsWith("SyncTime")) {
+                    // Server đồng bộ thời gian
+                    String[] parts = sentence.split(",");
+                    int remainingTime = Integer.parseInt(parts[1]);
+                    
+                    gameScene.getPvpMap().setRemainingTime(remainingTime);
+                    
+                } else if (sentence.startsWith("NewWave")) {
+                    // Wave mới bắt đầu
+                    String[] parts = sentence.split(",");
+                    int waveNumber = Integer.parseInt(parts[1]);
+                    
+                    System.out.println("Wave " + waveNumber + " started!");
+                    
+                } else if (sentence.startsWith("ScoreBattleLeaderboard")) {
+                    // Cập nhật bảng xếp hạng Score Battle
+                    String[] parts = sentence.split(",");
+                    
+                    gameScene.getPvpMap().getPlayerScores().clear();
+                    for (int i = 1; i < parts.length; i++) {
+                        String[] playerInfo = parts[i].split(":");
+                        if (playerInfo.length >= 2) {
+                            String username = playerInfo[0];
+                            int score = Integer.parseInt(playerInfo[1]);
+                            
+                            if (!username.equals(clientPlayer.getUsername())) {
+                                gameScene.getPvpMap().updatePlayerScore(username, score);
+                            }
+                        }
+                    }
+                    
+                } else if (sentence.startsWith("PlayerDamaged")) {
+                    // Thông báo người chơi bị damage
+                    String[] parts = sentence.split(",");
+                    String username = parts[1];
+                    int damage = Integer.parseInt(parts[2]);
+                    int remainingHealth = Integer.parseInt(parts[3]);
+                    
+                    if (username.equals(clientPlayer.getUsername())) {
+                        gameScene.getPvpMap().setPlayerHealth(remainingHealth);
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

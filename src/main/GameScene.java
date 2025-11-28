@@ -155,11 +155,19 @@ public class GameScene extends JPanel implements Runnable {
                         playerMP.setAlive(true);
                         sendRespawnPacket();
                         Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
+                        
+                        // Reset game state - chờ SPACE để bắt đầu
+                        pvpMap.resetGame();
                         break;
                     case "pvp":
                         player.setDefaultPosition();
                         isPlayerAlive = true;
                         currentMap = "lobby";
+                        
+                        // End Score Battle and send final score
+                        int finalScore = pvpMap.getLocalPlayerScore();
+                        Client.getGameClient().sendToServer(new Protocol().scoreBattleEndPacket(playerMP.getUsername(), finalScore));
+                        pvpMap.resetGame();
                         pvpMap.removeAllPlayers();
 
                         Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
@@ -299,6 +307,19 @@ public class GameScene extends JPanel implements Runnable {
     public void update() {
         player.update();
         playerMP.update();
+
+        // Update PvP map game logic if in pvp mode
+        if (currentMap.equals("pvp")) {
+            // Nhấn SPACE để bắt đầu/restart game khi chưa bắt đầu hoặc đã kết thúc
+            if (!pvpMap.isGameStarted() || pvpMap.isGameEnded()) {
+                if (keyHandler.isSpace()) {
+                    pvpMap.startGame();
+                    Client.getGameClient().sendToServer(new Protocol().startScoreBattlePacket(playerMP.getUsername()));
+                }
+            } else {
+                pvpMap.update();
+            }
+        }
 
         // Optimize NPC button visibility checks
         boolean pvpNPCNear = map.getPvpNPC().isPlayerNear(player);

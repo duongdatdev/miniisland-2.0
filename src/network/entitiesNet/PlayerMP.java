@@ -149,7 +149,9 @@ public class PlayerMP {
     public void shot() {
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastShotTime >= 300) { // 300 milliseconds cooldown
-            if (GameScene.getInstance().getCurrentMap().equals("pvp")) {
+            String currentMap = GameScene.getInstance().getCurrentMap();
+            // Allow shooting in both pvp mode (Score Battle) and original pvp
+            if (currentMap.equals("pvp")) {
                 // Clean up stopped bullets before adding new ones
                 bullets.removeIf(b -> b.stop);
                 

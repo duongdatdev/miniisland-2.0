@@ -1,6 +1,7 @@
 package objects.entities;
 
 import main.GameScene;
+import maps.PvpMap;
 import network.client.Client;
 import network.client.Protocol;
 import network.entitiesNet.PlayerMP;
@@ -22,6 +23,9 @@ public class Bullet {
     private float velocity = 10.0f; // Increased velocity for realistic movement
 
     private String playerShot;
+    
+    // Bullet damage
+    private int damage = 25;
 
     public Bullet(int x, int y, int direction, String playerShot) {
         xPosi = x;
@@ -79,6 +83,45 @@ public class Bullet {
         }
         return false;
     }
+    
+    /**
+     * Kiểm tra va chạm với quái vật trong chế độ Score Battle
+     * @return gold earned if monster killed, 0 otherwise
+     */
+    public int checkMonsterCollision() {
+        if (stop) return 0;
+        
+        GameScene gameScene = GameScene.getInstance();
+        if (!gameScene.getCurrentMap().equals("pvp")) return 0;
+        
+        PvpMap pvpMap = gameScene.getPvpMap();
+        if (!pvpMap.isGameStarted()) return 0;
+        
+        MonsterSpawner spawner = pvpMap.getMonsterSpawner();
+        
+        for (Monster monster : spawner.getMonsters()) {
+            if (!monster.isAlive()) continue;
+            
+            if (monster.checkBulletCollision(this)) {
+                stop = true;
+                
+                // Monster nhận damage
+                if (monster.takeDamage(damage)) {
+                    // Monster died - return gold reward
+                    int goldEarned = monster.getGoldReward();
+                    
+                    // Gửi thông báo lên server
+                    Client.getGameClient().sendToServer(
+                        new Protocol().monsterKillPacket(playerShot, monster.getId(), goldEarned)
+                    );
+                    
+                    return goldEarned;
+                }
+                return 0;
+            }
+        }
+        return 0;
+    }
 
     public void startBombThread(boolean checkCollision) {
         new BombShotThread(checkCollision).start();
@@ -106,6 +149,12 @@ public class Bullet {
                 }
 
                 distanceTraveled += Math.sqrt(Math.pow(xPosi - oldXPosi, 2) + Math.pow(yPosi - oldYPosi, 2));
+
+                // Kiểm tra collision với quái trong Score Battle mode
+                int goldEarned = checkMonsterCollision();
+                if (goldEarned > 0) {
+                    GameScene.getInstance().getPvpMap().addScore(goldEarned);
+                }
 
                 if (checkCollis && checkCollision()) {
                     stop = true;
@@ -171,5 +220,13 @@ public class Bullet {
 
     public void setVelocity(float velocity) {
         this.velocity = velocity;
+    }
+    
+    public int getDamage() {
+        return damage;
+    }
+    
+    public void setDamage(int damage) {
+        this.damage = damage;
     }
 }
