@@ -48,7 +48,7 @@ public class GameScene extends JPanel implements Runnable {
     private final JPanel loadingPanel;
 
     //NPC
-    CustomButton teleportButtonPvpNPC;
+    CustomButton teleportButtonMonsterHunt;
     CustomButton topButton;
     CustomButton teleportButtonMazeNPC;
     CustomButton shopButton;
@@ -148,18 +148,21 @@ public class GameScene extends JPanel implements Runnable {
             }
         });
 
-        teleportButtonPvpNPC = new CustomButton("Teleport");
+        teleportButtonMonsterHunt = new CustomButton("Hunt!");
 
-        teleportButtonPvpNPC.setBounds((screenWidth + 100) / 2, screenHeight - 100, 100, 50);
-        teleportButtonPvpNPC.setVisible(false);
-        teleportButtonPvpNPC.addActionListener(new ActionListener() {
+        teleportButtonMonsterHunt.setBounds((screenWidth + 100) / 2, screenHeight - 100, 100, 50);
+        teleportButtonMonsterHunt.setVisible(false);
+        teleportButtonMonsterHunt.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 switch (currentMap) {
                     case "lobby":
-                        player.setWorldX(1000);
-                        player.setWorldY(1000);
-                        currentMap = "pvp";
+                        // Spawn player in center of Monster Hunt playable area
+                        int centerX = 24 * 48; // Tile 24
+                        int centerY = 24 * 48;
+                        player.setWorldX(centerX);
+                        player.setWorldY(centerY);
+                        currentMap = "hunt"; // Changed from "pvp" to "hunt"
                         map.removeAllPlayers();
 
                         playerMP.setAlive(true);
@@ -169,7 +172,7 @@ public class GameScene extends JPanel implements Runnable {
                         // Reset game state - wait for SPACE to start
                         pvpMap.resetGame();
                         break;
-                    case "pvp":
+                    case "hunt": // Changed from "pvp" to "hunt"
                         player.setDefaultPosition();
                         isPlayerAlive = true;
                         currentMap = "lobby";
@@ -190,7 +193,7 @@ public class GameScene extends JPanel implements Runnable {
 
         teleportButtonMazeNPC = new CustomButton("Teleport");
 
-        teleportButtonPvpNPC.setVisible(true);
+        teleportButtonMonsterHunt.setVisible(true);
 
         teleportButtonMazeNPC.setBounds((screenWidth + 100) / 2, screenHeight - 100, 100, 50);
         teleportButtonMazeNPC.addActionListener(new ActionListener() {
@@ -219,7 +222,7 @@ public class GameScene extends JPanel implements Runnable {
             }
         });
 
-        add(teleportButtonPvpNPC);
+        add(teleportButtonMonsterHunt);
 
         setLayout(null);
 
@@ -352,8 +355,8 @@ public class GameScene extends JPanel implements Runnable {
         player.update();
         playerMP.update();
 
-        // Update PvP map game logic if in pvp mode
-        if (currentMap.equals("pvp")) {
+        // Update Monster Hunt map game logic if in hunt mode
+        if (currentMap.equals("hunt")) {
             // Press SPACE to start/restart game when not started or ended
             if (!pvpMap.isGameStarted() || pvpMap.isGameEnded()) {
                 if (keyHandler.isSpace()) {
@@ -384,9 +387,9 @@ public class GameScene extends JPanel implements Runnable {
         }
 
         // Optimize NPC button visibility checks
-        boolean pvpNPCNear = map.getPvpNPC().isPlayerNear(player);
-        if (teleportButtonPvpNPC.isVisible() != pvpNPCNear) {
-            teleportButtonPvpNPC.setVisible(pvpNPCNear);
+        boolean monsterHuntNPCNear = map.getMonsterHuntNPC().isPlayerNear(player);
+        if (teleportButtonMonsterHunt.isVisible() != monsterHuntNPCNear) {
+            teleportButtonMonsterHunt.setVisible(monsterHuntNPCNear);
         }
 
         boolean topNPCNear = map.getTopNPC().isPlayerNear(player);
@@ -418,7 +421,7 @@ public class GameScene extends JPanel implements Runnable {
                 case "lobby":
                     map.draw(g2d, tileSize);
                     break;
-                case "pvp":
+                case "hunt": // Changed from "pvp" to "hunt"
                     pvpMap.draw(g2d, tileSize);
                     break;
                 case "maze":
@@ -427,17 +430,18 @@ public class GameScene extends JPanel implements Runnable {
 
             playerMP.render(g2d, tileSize);
 
-            // Render bullets for current player (optimized)
+            // Render bullets for current player with new rendering
             for (objects.entities.Bullet bullet : playerMP.getBullets()) {
                 if (bullet != null && !bullet.stop) {
                     int bombScreenX = bullet.getPosiX() - player.getWorldX() + player.getScreenX();
                     int bombScreenY = bullet.getPosiY() - player.getWorldY() + player.getScreenY();
-                    g2d.drawImage(bullet.getBulletImg(), bombScreenX, bombScreenY, 10, 10, this);
+                    // Use new render method for better visuals
+                    bullet.render(g2d, bombScreenX, bombScreenY);
                 }
             }
 
-            // Render bullets for all players in PvP (optimized)
-            if (currentMap.equals("pvp")) {
+            // Render bullets for all players in Monster Hunt (optimized)
+            if (currentMap.equals("hunt")) {
                 for (PlayerMP otherPlayer : getMap().players) {
                     if (otherPlayer == null) continue;
                     
@@ -445,7 +449,8 @@ public class GameScene extends JPanel implements Runnable {
                         if (bullet != null && !bullet.stop) {
                             int bulletScreenX = bullet.getPosiX() - player.getWorldX() + player.getScreenX();
                             int bulletScreenY = bullet.getPosiY() - player.getWorldY() + player.getScreenY();
-                            g2d.drawImage(bullet.getBulletImg(), bulletScreenX, bulletScreenY, 10, 10, this);
+                            // Use new render method for better visuals
+                            bullet.render(g2d, bulletScreenX, bulletScreenY);
                         }
                     }
                 }
@@ -601,7 +606,7 @@ public class GameScene extends JPanel implements Runnable {
 
     public Map getMap() {
         return switch (currentMap) {
-            case "pvp" -> pvpMap;
+            case "hunt" -> pvpMap; // Changed from "pvp" to "hunt"
             case "maze" -> mazeMap;
             default -> map;
         };

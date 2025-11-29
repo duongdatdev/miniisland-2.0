@@ -256,8 +256,8 @@ public class Player extends Entity {
         
         // Handle shooting based on map type
         String currentMap = gameScene.getCurrentMap();
-        if (currentMap.equals("pvp")) {
-            // In PvP: Use mouse for shooting (left click held)
+        if (currentMap.equals("hunt")) {
+            // In Monster Hunt: Use mouse for shooting (left click held)
             if (gameScene.getMouseHandler() != null && gameScene.getMouseHandler().isLeftHeld()) {
                 // Update mouse handler screen center for aiming
                 gameScene.getMouseHandler().setScreenCenter(screenX + 24, screenY + 24);
@@ -270,8 +270,8 @@ public class Player extends Entity {
             }
         }
         
-        // Right click for dash in PvP
-        if (currentMap.equals("pvp") && gameScene.getMouseHandler() != null) {
+        // Right click for dash in Monster Hunt
+        if (currentMap.equals("hunt") && gameScene.getMouseHandler() != null) {
             if (gameScene.getMouseHandler().isRightHeld() && canDash()) {
                 performDash();
             }
@@ -322,7 +322,7 @@ public class Player extends Entity {
         effectiveSpeed = (int)(effectiveSpeed * speedMultiplier);
         
         // Apply PvP map speed multiplier if available
-        if (gameScene != null && gameScene.getCurrentMap().equals("pvp")) {
+        if (gameScene != null && gameScene.getCurrentMap().equals("hunt")) {
             float pvpSpeedMultiplier = gameScene.getPvpMap().getSpeedMultiplier();
             if (pvpSpeedMultiplier > 1.0f) {
                 effectiveSpeed = (int)(effectiveSpeed * pvpSpeedMultiplier);

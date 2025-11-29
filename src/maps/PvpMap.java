@@ -6,6 +6,7 @@ import network.client.Protocol;
 import objects.PowerUp;
 import objects.PowerUp.PowerUpType;
 import objects.entities.Bullet;
+import objects.entities.DamageNumber;
 import objects.entities.Monster;
 import objects.entities.MonsterSpawner;
 import objects.entities.Player;
@@ -17,7 +18,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 /**
- * PvpMap - Chế độ Đối kháng điểm số
+ * PvpMap - Chế độ Monster Hunt (Săn quái kiếm điểm)
  * Nhiều người chơi cùng xuất hiện trong một bản đồ top-down.
  * Người chơi bắn quái để nhận vàng trong thời gian giới hạn.
  * Quái có thể di chuyển và tấn công người chơi.
@@ -77,6 +78,9 @@ public class PvpMap extends Map {
     
     // === NEW: Difficulty scaling ===
     private float difficultyMultiplier = 1.0f;
+    
+    // === NEW: Damage Numbers ===
+    private ArrayList<DamageNumber> damageNumbers;
 
     public PvpMap(GameScene gameScene) {
         super(gameScene);
@@ -88,7 +92,17 @@ public class PvpMap extends Map {
         
         // Initialize monster spawner
         monsterSpawner = new MonsterSpawner(gameScene);
-        monsterSpawner.setMapBounds(100, 2300, 100, 2300);
+        
+        // Set spawn bounds to playable area (tiles 11-38, row 11-38)
+        // Map is 50x50 tiles, each 48px
+        // Playable area starts at tile 10 (col/row) = 10*48 = 480px
+        // Playable area ends at tile 39 = 39*48 = 1872px
+        int tileSize = 48;
+        int minTile = 11;
+        int maxTile = 38;
+        int minBound = minTile * tileSize; // 528
+        int maxBound = maxTile * tileSize; // 1824
+        monsterSpawner.setMapBounds(minBound, maxBound, minBound, maxBound);
         
         // Initialize score system
         playerScores = new HashMap<>();
@@ -96,6 +110,9 @@ public class PvpMap extends Map {
         // Initialize power-up system
         powerUps = new ArrayList<>();
         random = new Random();
+        
+        // Initialize damage numbers
+        damageNumbers = new ArrayList<>();
     }
     
     /**
@@ -123,6 +140,15 @@ public class PvpMap extends Map {
         lastEventMessage = "";
         eventMessageTimer = 0;
         difficultyMultiplier = 1.0f;
+        
+        // Clear damage numbers
+        damageNumbers.clear();
+        
+        // Spawn player in center of playable area
+        int centerX = 24 * 48; // Tile 24 = center of playable area
+        int centerY = 24 * 48;
+        gameScene.getPlayer().setWorldX(centerX);
+        gameScene.getPlayer().setWorldY(centerY);
         
         monsterSpawner.start();
     }
@@ -158,6 +184,7 @@ public class PvpMap extends Map {
         resetBuffs();
         comboCount = 0;
         totalKills = 0;
+        damageNumbers.clear();
     }
     
     /**
@@ -233,6 +260,12 @@ public class PvpMap extends Map {
             spawnPowerUp();
             powerUpSpawnTimer = 0;
         }
+        
+        // Update damage numbers
+        for (DamageNumber dmgNum : damageNumbers) {
+            dmgNum.update();
+        }
+        damageNumbers.removeIf(DamageNumber::shouldRemove);
     }
     
     /**
@@ -314,8 +347,11 @@ public class PvpMap extends Map {
     private void spawnPowerUp() {
         if (powerUps.size() >= 3) return; // Max 3 power-ups on map
         
-        int spawnX = 200 + random.nextInt(2000);
-        int spawnY = 200 + random.nextInt(2000);
+        // Spawn in playable area (tiles 11-38)
+        int minBound = 11 * 48;
+        int maxBound = 38 * 48;
+        int spawnX = minBound + random.nextInt(maxBound - minBound);
+        int spawnY = minBound + random.nextInt(maxBound - minBound);
         
         // Avoid spawning near player
         Player player = gameScene.getPlayer();
@@ -353,7 +389,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Kiểm tra va chạm đạn với quái
+     * Kiểm tra va chạm đạn với quái và tạo damage numbers
      */
     private void checkBulletMonsterCollisions() {
         String username = gameScene.getPlayerMP().getUsername();
@@ -364,27 +400,44 @@ public class PvpMap extends Map {
         // Check bullets from local player
         for (Bullet bullet : gameScene.getPlayerMP().getBullets()) {
             if (bullet != null && !bullet.isStop()) {
-                int goldEarned = monsterSpawner.checkBulletCollision(bullet, username);
-                if (goldEarned > 0) {
-                    // Apply combo and gold multiplier
-                    comboCount++;
-                    comboTimer = COMBO_TIMEOUT;
-                    maxCombo = Math.max(maxCombo, comboCount);
+                // Use detailed collision check
+                int[] result = monsterSpawner.checkBulletCollisionDetailed(bullet, username, bulletDamage);
+                
+                if (result != null) {
+                    int goldEarned = result[0];
+                    int damage = result[1];
+                    int monsterX = result[2];
+                    int monsterY = result[3];
+                    boolean killed = result[4] == 1;
                     
-                    // Calculate final gold with multipliers
-                    float comboBonus = 1.0f + (comboCount * 0.1f); // +10% per combo
-                    int finalGold = (int) (goldEarned * goldMultiplier * comboBonus);
+                    // Create damage number
+                    boolean isCritical = damageMultiplier > 1.0f; // Critical if has damage buff
+                    damageNumbers.add(new DamageNumber(monsterX + 24, monsterY, damage, isCritical));
                     
-                    addScore(finalGold);
-                    totalKills++;
-                    
-                    // Check for kill streak events
-                    checkKillStreak();
-                    
-                    // Send score update to server
-                    Client.getGameClient().sendToServer(
-                        new Protocol().scoreUpdatePacket(username, localPlayerScore)
-                    );
+                    if (killed) {
+                        // Monster was killed
+                        comboCount++;
+                        comboTimer = COMBO_TIMEOUT;
+                        maxCombo = Math.max(maxCombo, comboCount);
+                        
+                        // Calculate final gold with multipliers
+                        float comboBonus = 1.0f + (comboCount * 0.1f); // +10% per combo
+                        int finalGold = (int) (goldEarned * goldMultiplier * comboBonus);
+                        
+                        // Create gold number
+                        damageNumbers.add(new DamageNumber(monsterX + 24, monsterY - 20, finalGold));
+                        
+                        addScore(finalGold);
+                        totalKills++;
+                        
+                        // Check for kill streak events
+                        checkKillStreak();
+                        
+                        // Send score update to server
+                        Client.getGameClient().sendToServer(
+                            new Protocol().scoreUpdatePacket(username, localPlayerScore)
+                        );
+                    }
                 }
             }
         }
@@ -457,9 +510,11 @@ public class PvpMap extends Map {
         
         showEventMessage("💀 You died! Lost " + goldLost + " gold");
         
-        // Teleport player to spawn point
-        gameScene.getPlayer().setWorldX(1000);
-        gameScene.getPlayer().setWorldY(1000);
+        // Teleport player to center of playable area
+        int centerX = 24 * 48;
+        int centerY = 24 * 48;
+        gameScene.getPlayer().setWorldX(centerX);
+        gameScene.getPlayer().setWorldY(centerY);
         
         // Send respawn to server
         Client.getGameClient().sendToServer(
@@ -491,6 +546,9 @@ public class PvpMap extends Map {
         // Draw power-ups
         drawPowerUps(g2d, tileSize);
         
+        // Draw damage numbers
+        drawDamageNumbers(g2d);
+        
         // Draw UI overlay
         drawUI(g2d);
     }
@@ -519,6 +577,21 @@ public class PvpMap extends Map {
             int screenY = worldY - playerWorldY + playerScreenY;
             
             powerUp.render(g2d, screenX, screenY, tileSize);
+        }
+    }
+    
+    /**
+     * Vẽ damage numbers (floating damage text)
+     */
+    private void drawDamageNumbers(Graphics2D g2d) {
+        Player player = gameScene.getPlayer();
+        int playerWorldX = player.getWorldX();
+        int playerWorldY = player.getWorldY();
+        int playerScreenX = player.getScreenX();
+        int playerScreenY = player.getScreenY();
+        
+        for (DamageNumber dmgNum : damageNumbers) {
+            dmgNum.render(g2d, playerWorldX, playerWorldY, playerScreenX, playerScreenY);
         }
     }
     
@@ -585,6 +658,13 @@ public class PvpMap extends Map {
         // Kills
         g2d.setColor(Color.WHITE);
         g2d.drawString("Kills: " + totalKills, 20, 95);
+        
+        // Difficulty level
+        float currentDifficulty = monsterSpawner.getDifficultyMultiplier();
+        if (currentDifficulty > 1.0f) {
+            g2d.setColor(new Color(255, 100, 100));
+            g2d.drawString("Diff: x" + String.format("%.1f", currentDifficulty), 100, 55);
+        }
         
         // Combo (if active)
         if (comboCount > 1) {
@@ -968,7 +1048,7 @@ public class PvpMap extends Map {
         // Title
         g2d.setFont(new Font("Arial", Font.BOLD, 36));
         g2d.setColor(Color.YELLOW);
-        String title = "⚔ SCORE BATTLE ⚔";
+        String title = "🎯 MONSTER HUNT 🎯";
         int textWidth = g2d.getFontMetrics().stringWidth(title);
         g2d.drawString(title, (screenWidth - textWidth) / 2, screenHeight / 2 - 80);
         
@@ -987,6 +1067,7 @@ public class PvpMap extends Map {
             "⚡ Collect power-ups for buffs!",
             "🔥 Build combos for bonus gold!",
             "🛡 Avoid taking damage to stay alive!",
+            "📈 Monsters get stronger each wave!",
             "⏱ Time limit: 3 minutes"
         };
         
@@ -1007,7 +1088,7 @@ public class PvpMap extends Map {
 
     @Override
     protected void renderNPC(Graphics2D g2d) {
-        gameScene.getLobbyMap().getPvpNPC().checkDraw(gameScene.getPlayer(), g2d);
+        gameScene.getLobbyMap().getMonsterHuntNPC().checkDraw(gameScene.getPlayer(), g2d);
     }
 
     @Override

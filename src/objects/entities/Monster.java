@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 /**
- * Monster class represents monsters in Score Battle mode.
+ * Monster class represents monsters in Monster Hunt (Score Battle) mode.
  * Monsters can move randomly and attack players.
  */
 public class Monster extends Entity {
@@ -41,6 +41,27 @@ public class Monster extends Entity {
     private int attackCooldown;
     private int attackTimer;
     private int attackRange;
+    
+    // Map bounds - set by MonsterSpawner
+    private int mapMinX = 528;  // Default: tile 11 * 48
+    private int mapMaxX = 1824; // Default: tile 38 * 48
+    private int mapMinY = 528;
+    private int mapMaxY = 1824;
+    
+    // Death animation
+    private boolean isDying = false;
+    private int deathAnimTimer = 0;
+    private static final int DEATH_ANIM_DURATION = 30; // 0.5 seconds
+    private float deathScale = 1.0f;
+    private float deathAlpha = 1.0f;
+    private int deathRotation = 0;
+    
+    // Difficulty scaling
+    private float difficultyMultiplier = 1.0f;
+    
+    // Hit flash effect
+    private int hitFlashTimer = 0;
+    private static final int HIT_FLASH_DURATION = 6;
     
     public enum MonsterType {
         SLIME(30, 5, 10, 2, 100), // health, damage, goldReward, speed, attackRange
@@ -89,6 +110,20 @@ public class Monster extends Entity {
         
         // Load sprites (only created once per type)
         initSpritesIfNeeded();
+    }
+    
+    /**
+     * Constructor with difficulty multiplier for wave scaling
+     */
+    public Monster(int id, int x, int y, MonsterType type, float difficultyMultiplier) {
+        this(id, x, y, type);
+        this.difficultyMultiplier = difficultyMultiplier;
+        
+        // Scale stats based on difficulty
+        this.maxHealth = (int)(type.health * difficultyMultiplier);
+        this.health = this.maxHealth;
+        this.damage = (int)(type.damage * difficultyMultiplier);
+        this.goldReward = (int)(type.goldReward * (1 + (difficultyMultiplier - 1) * 0.5f)); // Gold scales slower
     }
     
     /**
@@ -157,7 +192,18 @@ public class Monster extends Entity {
      * Update AI movement and attack
      */
     public void updateAI(Player targetPlayer) {
+        // Update death animation
+        if (isDying) {
+            updateDeathAnimation();
+            return;
+        }
+        
         if (!isAlive) return;
+        
+        // Update hit flash
+        if (hitFlashTimer > 0) {
+            hitFlashTimer--;
+        }
         
         // Animation update
         animationCounter++;
@@ -185,6 +231,27 @@ public class Monster extends Entity {
         }
     }
     
+    /**
+     * Update death animation
+     */
+    private void updateDeathAnimation() {
+        deathAnimTimer++;
+        
+        // Scale down and fade out
+        float progress = (float) deathAnimTimer / DEATH_ANIM_DURATION;
+        deathScale = 1.0f + progress * 0.3f; // Grow slightly
+        deathAlpha = 1.0f - progress;
+        deathRotation = (int)(progress * 180); // Rotate while dying
+        
+        // Float upward
+        worldY -= 2;
+        
+        if (deathAnimTimer >= DEATH_ANIM_DURATION) {
+            isAlive = false;
+            isDying = false;
+        }
+    }
+    
     private void chasePlayer(int playerX, int playerY) {
         int dx = playerX - worldX;
         int dy = playerY - worldY;
@@ -192,8 +259,12 @@ public class Monster extends Entity {
         // Normalize and move
         double length = Math.sqrt(dx * dx + dy * dy);
         if (length > 0) {
-            worldX += (int) (speed * dx / length);
-            worldY += (int) (speed * dy / length);
+            int newX = worldX + (int) (speed * dx / length);
+            int newY = worldY + (int) (speed * dy / length);
+            
+            // Clamp to map bounds (account for monster size ~48px)
+            worldX = Math.max(mapMinX, Math.min(newX, mapMaxX - 48));
+            worldY = Math.max(mapMinY, Math.min(newY, mapMaxY - 48));
             
             // Update direction for animation
             if (Math.abs(dx) > Math.abs(dy)) {
@@ -213,52 +284,71 @@ public class Monster extends Entity {
             moveDuration = random.nextInt(60) + 30;
         }
         
+        int newX = worldX;
+        int newY = worldY;
+        
         switch (moveDirection) {
             case 1: // Down
-                worldY += speed;
+                newY += speed;
                 direction = "DOWN";
                 break;
             case 2: // Up
-                worldY -= speed;
+                newY -= speed;
                 direction = "UP";
                 break;
             case 3: // Left
-                worldX -= speed;
+                newX -= speed;
                 direction = "LEFT";
                 break;
             case 4: // Right
-                worldX += speed;
+                newX += speed;
                 direction = "RIGHT";
                 break;
         }
         
-        // Keep monster within map bounds (assuming 50x50 tiles map, 48px per tile)
-        int mapWidth = 50 * 48;
-        int mapHeight = 50 * 48;
-        worldX = Math.max(50, Math.min(worldX, mapWidth - 100));
-        worldY = Math.max(50, Math.min(worldY, mapHeight - 100));
+        // Keep monster within playable area bounds (account for monster size ~48px)
+        worldX = Math.max(mapMinX, Math.min(newX, mapMaxX - 48));
+        worldY = Math.max(mapMinY, Math.min(newY, mapMaxY - 48));
+        
+        // Change direction if hitting boundary
+        if (worldX == mapMinX || worldX == mapMaxX - 48 || 
+            worldY == mapMinY || worldY == mapMaxY - 48) {
+            moveDirection = random.nextInt(4) + 1;
+        }
     }
     
     /**
      * Take damage from bullet
+     * @return gold reward if monster died, 0 otherwise
      */
-    public boolean takeDamage(int damage) {
-        if (!isAlive) return false;
+    public int takeDamage(int damage) {
+        if (!isAlive || isDying) return 0;
         
         health -= damage;
+        hitFlashTimer = HIT_FLASH_DURATION; // Trigger hit flash
+        
         if (health <= 0) {
             health = 0;
-            isAlive = false;
-            return true; // Monster died
+            // Start death animation instead of immediately dying
+            isDying = true;
+            deathAnimTimer = 0;
+            return goldReward; // Return gold reward
         }
-        return false;
+        return 0;
+    }
+    
+    /**
+     * Old method for compatibility - returns boolean
+     */
+    public boolean takeDamageBoolean(int damage) {
+        return takeDamage(damage) > 0;
     }
     
     /**
      * Check collision with player
      */
     public boolean checkPlayerCollision(Player player) {
-        if (!isAlive) return false;
+        if (!isAlive || isDying) return false;
         
         Rectangle monsterRect = new Rectangle(worldX + hitBox.x, worldY + hitBox.y, hitBox.width, hitBox.height);
         Rectangle playerRect = new Rectangle(player.getWorldX() + player.getHitBox().x, 
@@ -272,7 +362,7 @@ public class Monster extends Entity {
      * Check collision with bullet
      */
     public boolean checkBulletCollision(Bullet bullet) {
-        if (!isAlive || bullet.isStop()) return false;
+        if (!isAlive || isDying || bullet.isStop()) return false;
         
         Rectangle monsterRect = new Rectangle(worldX + hitBox.x, worldY + hitBox.y, hitBox.width, hitBox.height);
         Rectangle bulletRect = new Rectangle(bullet.getPosiX(), bullet.getPosiY(), 10, 10);
@@ -284,12 +374,45 @@ public class Monster extends Entity {
      * Render monster on screen
      */
     public void render(Graphics2D g2d, int screenX, int screenY, int tileSize) {
-        if (!isAlive) return;
+        if (!isAlive && !isDying) return;
         
-        // Draw sprite from cache
+        // Save original composite for transparency
+        java.awt.Composite originalComposite = g2d.getComposite();
+        java.awt.geom.AffineTransform originalTransform = g2d.getTransform();
+        
+        // Apply death animation effects
+        if (isDying) {
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, deathAlpha));
+            
+            // Rotate and scale from center
+            int centerX = screenX + tileSize / 2;
+            int centerY = screenY + tileSize / 2;
+            g2d.translate(centerX, centerY);
+            g2d.rotate(Math.toRadians(deathRotation));
+            g2d.scale(deathScale, deathScale);
+            g2d.translate(-centerX, -centerY);
+        }
+        
+        // Hit flash effect - tint red when hit
         BufferedImage[] sprites = getSprites();
         if (sprites != null && sprites[spriteIndex] != null) {
-            g2d.drawImage(sprites[spriteIndex], screenX, screenY, tileSize, tileSize, null);
+            if (hitFlashTimer > 0) {
+                // Draw with red tint
+                g2d.drawImage(sprites[spriteIndex], screenX, screenY, tileSize, tileSize, null);
+                g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
+                g2d.setColor(Color.RED);
+                g2d.fillRect(screenX, screenY, tileSize, tileSize);
+                g2d.setComposite(originalComposite);
+            } else {
+                g2d.drawImage(sprites[spriteIndex], screenX, screenY, tileSize, tileSize, null);
+            }
+        }
+        
+        // Restore transform after death animation
+        if (isDying) {
+            g2d.setTransform(originalTransform);
+            g2d.setComposite(originalComposite);
+            return; // Don't draw health bar when dying
         }
         
         // Draw health bar
@@ -302,22 +425,46 @@ public class Monster extends Entity {
         g2d.setColor(Color.RED);
         g2d.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
         
-        // Health (green)
-        int currentHealthWidth = (int) ((double) health / maxHealth * healthBarWidth);
-        g2d.setColor(Color.GREEN);
+        // Health (green to yellow to red based on HP)
+        float healthPercent = (float) health / maxHealth;
+        Color healthColor = new Color(
+            (int)(255 * (1 - healthPercent)),
+            (int)(255 * healthPercent),
+            0
+        );
+        int currentHealthWidth = (int) (healthBarWidth * healthPercent);
+        g2d.setColor(healthColor);
         g2d.fillRect(healthBarX, healthBarY, currentHealthWidth, healthBarHeight);
         
         // Border
         g2d.setColor(Color.BLACK);
         g2d.drawRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
         
-        // Draw monster type name (Boss)
+        // Draw monster type name (Boss) with glow effect
         if (type == MonsterType.BOSS) {
             g2d.setFont(new Font("Arial", Font.BOLD, 12));
-            g2d.setColor(Color.RED);
             String name = "BOSS";
             int nameWidth = g2d.getFontMetrics().stringWidth(name);
-            g2d.drawString(name, screenX + (tileSize - nameWidth) / 2, healthBarY - 5);
+            int nameX = screenX + (tileSize - nameWidth) / 2;
+            int nameY = healthBarY - 5;
+            
+            // Glow effect
+            g2d.setColor(new Color(255, 0, 0, 100));
+            g2d.drawString(name, nameX - 1, nameY);
+            g2d.drawString(name, nameX + 1, nameY);
+            g2d.drawString(name, nameX, nameY - 1);
+            g2d.drawString(name, nameX, nameY + 1);
+            
+            g2d.setColor(Color.RED);
+            g2d.drawString(name, nameX, nameY);
+        }
+        
+        // Draw difficulty indicator for scaled monsters
+        if (difficultyMultiplier > 1.0f) {
+            g2d.setFont(new Font("Arial", Font.BOLD, 10));
+            g2d.setColor(Color.YELLOW);
+            String lvl = "Lv." + (int)(difficultyMultiplier * 10 - 9);
+            g2d.drawString(lvl, screenX, screenY - 2);
         }
     }
     
@@ -375,7 +522,7 @@ public class Monster extends Entity {
     }
     
     public boolean canAttack() {
-        return attackTimer <= 0 && isAlive;
+        return attackTimer <= 0 && isAlive && !isDying;
     }
     
     /**
@@ -383,5 +530,44 @@ public class Monster extends Entity {
      */
     public void resetAttackCooldown() {
         this.attackTimer = attackCooldown;
+    }
+    
+    /**
+     * Check if monster is currently playing death animation
+     */
+    public boolean isDying() {
+        return isDying;
+    }
+    
+    /**
+     * Get difficulty multiplier
+     */
+    public float getDifficultyMultiplier() {
+        return difficultyMultiplier;
+    }
+    
+    /**
+     * Set map bounds for movement restriction
+     */
+    public void setMapBounds(int minX, int maxX, int minY, int maxY) {
+        this.mapMinX = minX;
+        this.mapMaxX = maxX;
+        this.mapMinY = minY;
+        this.mapMaxY = maxY;
+        
+        // Clamp current position to new bounds
+        worldX = Math.max(mapMinX, Math.min(worldX, mapMaxX - 48));
+        worldY = Math.max(mapMinY, Math.min(worldY, mapMaxY - 48));
+    }
+    
+    /**
+     * Set difficulty multiplier and update stats
+     */
+    public void setDifficultyMultiplier(float multiplier) {
+        this.difficultyMultiplier = multiplier;
+        this.maxHealth = (int)(type.health * multiplier);
+        this.health = this.maxHealth;
+        this.damage = (int)(type.damage * multiplier);
+        this.goldReward = (int)(type.goldReward * (1 + (multiplier - 1) * 0.5f));
     }
 }

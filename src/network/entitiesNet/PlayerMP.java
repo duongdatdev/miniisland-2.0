@@ -167,8 +167,8 @@ public class PlayerMP {
         
         if (currentTime - lastShotTime >= actualCooldown) {
             String currentMap = GameScene.getInstance().getCurrentMap();
-            // Allow shooting in both pvp mode (Score Battle) and original pvp
-            if (currentMap.equals("pvp")) {
+            // Allow shooting in Monster Hunt mode
+            if (currentMap.equals("hunt")) {
                 // Clean up stopped bullets before adding new ones
                 bullets.removeIf(b -> b.stop);
                 
@@ -212,7 +212,7 @@ public class PlayerMP {
      */
     public void shootWithMouse() {
         GameScene gs = GameScene.getInstance();
-        if (gs.getCurrentMap().equals("pvp")) {
+        if (gs.getCurrentMap().equals("hunt")) {
             shot();
         }
     }

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 /**
- * MonsterSpawner manages monster spawning in Score Battle mode.
+ * MonsterSpawner manages monster spawning in Monster Hunt (Score Battle) mode.
  * Spawns monsters in waves with increasing difficulty.
  */
 public class MonsterSpawner {
@@ -22,6 +22,10 @@ public class MonsterSpawner {
     private int waveNumber = 1;
     private int monstersPerWave = 5;
     private int monstersKilledInWave = 0;
+    
+    // Difficulty scaling
+    private float difficultyMultiplier = 1.0f;
+    private static final float DIFFICULTY_INCREMENT_PER_WAVE = 0.1f; // +10% per wave
     
     // Map bounds
     private int mapMinX = 100;
@@ -51,6 +55,7 @@ public class MonsterSpawner {
         spawnTimer = 0;
         monsters.clear();
         nextMonsterId = 0;
+        difficultyMultiplier = 1.0f; // Reset difficulty
         
         // Spawn first wave
         spawnWave();
@@ -72,13 +77,13 @@ public class MonsterSpawner {
         
         // Update all monsters
         for (Monster monster : monsters) {
-            if (monster.isAlive()) {
+            if (monster.isAlive() || monster.isDying()) {
                 monster.updateAI(targetPlayer);
             }
         }
         
-        // Remove dead monsters
-        monsters.removeIf(m -> !m.isAlive());
+        // Remove dead monsters (not dying, completely dead)
+        monsters.removeIf(m -> !m.isAlive() && !m.isDying());
         
         // Spawn timer
         spawnTimer++;
@@ -87,14 +92,15 @@ public class MonsterSpawner {
             spawnTimer = 0;
         }
         
-        // Check wave transition
-        if (monstersKilledInWave >= monstersPerWave && monsters.isEmpty()) {
+        // Check wave transition - count only completely dead monsters
+        int aliveOrDying = (int) monsters.stream().filter(m -> m.isAlive() || m.isDying()).count();
+        if (monstersKilledInWave >= monstersPerWave && aliveOrDying == 0) {
             nextWave();
         }
     }
     
     /**
-     * Spawn a new monster
+     * Spawn a new monster with difficulty scaling
      */
     private void spawnMonster() {
         if (monsters.size() >= maxMonsters) return;
@@ -105,21 +111,26 @@ public class MonsterSpawner {
         
         int spawnX, spawnY;
         int attempts = 0;
+        int minSpawnDistance = 300; // Minimum distance from player
+        
         do {
-            spawnX = mapMinX + random.nextInt(mapMaxX - mapMinX);
-            spawnY = mapMinY + random.nextInt(mapMaxY - mapMinY);
+            spawnX = mapMinX + random.nextInt(Math.max(1, mapMaxX - mapMinX));
+            spawnY = mapMinY + random.nextInt(Math.max(1, mapMaxY - mapMinY));
             attempts++;
-        } while (Math.sqrt(Math.pow(spawnX - playerX, 2) + Math.pow(spawnY - playerY, 2)) < 200 && attempts < 10);
+        } while (Math.sqrt(Math.pow(spawnX - playerX, 2) + Math.pow(spawnY - playerY, 2)) < minSpawnDistance && attempts < 20);
         
         // Select monster type based on wave
         MonsterType type = selectMonsterType();
         
-        Monster monster = new Monster(nextMonsterId++, spawnX, spawnY, type);
+        // Create monster with difficulty scaling
+        Monster monster = new Monster(nextMonsterId++, spawnX, spawnY, type, difficultyMultiplier);
+        // Set map bounds for this monster
+        monster.setMapBounds(mapMinX, mapMaxX, mapMinY, mapMaxY);
         monsters.add(monster);
     }
     
     /**
-     * Spawn a wave of monsters
+     * Spawn a wave of monsters with scaled difficulty
      */
     private void spawnWave() {
         int toSpawn = Math.min(monstersPerWave, maxMonsters - monsters.size());
@@ -128,7 +139,7 @@ public class MonsterSpawner {
             spawnMonster();
         }
         
-        // Spawn boss every 5 waves
+        // Spawn boss every 5 waves (with extra difficulty scaling)
         if (waveNumber % 5 == 0 && monsters.size() < maxMonsters) {
             int playerX = gameScene.getPlayer().getWorldX();
             int playerY = gameScene.getPlayer().getWorldY();
@@ -136,13 +147,17 @@ public class MonsterSpawner {
             int spawnX = mapMinX + random.nextInt(mapMaxX - mapMinX);
             int spawnY = mapMinY + random.nextInt(mapMaxY - mapMinY);
             
-            Monster boss = new Monster(nextMonsterId++, spawnX, spawnY, MonsterType.BOSS);
+            // Boss has extra difficulty scaling
+            float bossMultiplier = difficultyMultiplier * 1.2f;
+            Monster boss = new Monster(nextMonsterId++, spawnX, spawnY, MonsterType.BOSS, bossMultiplier);
+            // Set map bounds for boss
+            boss.setMapBounds(mapMinX, mapMaxX, mapMinY, mapMaxY);
             monsters.add(boss);
         }
     }
     
     /**
-     * Transition to next wave
+     * Transition to next wave with increased difficulty
      */
     private void nextWave() {
         waveNumber++;
@@ -151,6 +166,9 @@ public class MonsterSpawner {
         // Increase difficulty
         monstersPerWave = Math.min(monstersPerWave + 2, 15);
         spawnInterval = Math.max(spawnInterval - 10, 60); // Spawn faster
+        
+        // Scale monster stats
+        difficultyMultiplier = 1.0f + (waveNumber - 1) * DIFFICULTY_INCREMENT_PER_WAVE;
         
         spawnWave();
     }
@@ -180,22 +198,35 @@ public class MonsterSpawner {
     
     /**
      * Check bullet collision with all monsters
-     * Returns goldReward if monster is killed, 0 otherwise
+     * Returns array: [goldReward, damage, monsterWorldX, monsterWorldY] or null
      */
-    public int checkBulletCollision(Bullet bullet, String shooterUsername) {
+    public int[] checkBulletCollisionDetailed(Bullet bullet, String shooterUsername, int damage) {
         for (Monster monster : monsters) {
             if (monster.checkBulletCollision(bullet)) {
                 bullet.setStop(true);
                 
-                // Monster nhận 25 damage (có thể điều chỉnh)
-                if (monster.takeDamage(25)) {
+                int monsterX = monster.getWorldX();
+                int monsterY = monster.getWorldY();
+                
+                // Apply damage and get gold if killed
+                int goldEarned = monster.takeDamage(damage);
+                if (goldEarned > 0) {
                     monstersKilledInWave++;
-                    return monster.getGoldReward();
+                    return new int[] { goldEarned, damage, monsterX, monsterY, 1 }; // 1 = killed
                 }
-                return 0;
+                return new int[] { 0, damage, monsterX, monsterY, 0 }; // 0 = hit but not killed
             }
         }
-        return 0;
+        return null;
+    }
+    
+    /**
+     * Check bullet collision with all monsters (legacy method)
+     * Returns goldReward if monster is killed, 0 otherwise
+     */
+    public int checkBulletCollision(Bullet bullet, String shooterUsername) {
+        int[] result = checkBulletCollisionDetailed(bullet, shooterUsername, 25);
+        return result != null ? result[0] : 0;
     }
     
     /**
@@ -237,6 +268,8 @@ public class MonsterSpawner {
         }
         
         Monster monster = new Monster(id, x, y, type);
+        // Set map bounds for this monster
+        monster.setMapBounds(mapMinX, mapMaxX, mapMinY, mapMaxY);
         monsters.add(monster);
     }
     
@@ -273,7 +306,7 @@ public class MonsterSpawner {
     }
     
     public int getMonstersAlive() {
-        return (int) monsters.stream().filter(Monster::isAlive).count();
+        return (int) monsters.stream().filter(m -> m.isAlive() && !m.isDying()).count();
     }
     
     public int getMonstersKilledInWave() {
@@ -298,5 +331,9 @@ public class MonsterSpawner {
     
     public void setSpawnInterval(int spawnInterval) {
         this.spawnInterval = spawnInterval;
+    }
+    
+    public float getDifficultyMultiplier() {
+        return difficultyMultiplier;
     }
 }

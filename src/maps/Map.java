@@ -27,7 +27,7 @@ public class Map {
     public PlayerMP player;
 
     private Entity[] npcs;
-    private NPC pvpNPC;
+    private NPC monsterHuntNPC; // Renamed from pvpNPC
     private NPC topNPC;
     private NPC mazeNPC;
 
@@ -43,7 +43,7 @@ public class Map {
         player = gameScene.getPlayerMP();
 
         try {
-            pvpNPC = new NPC("PvP", 1000, 1000, ImageIO.read(getClass().getResource("/Maps/Pvp/PvpNPC.png")), gameScene.getTileSize());
+            monsterHuntNPC = new NPC("Monster Hunt", 1000, 1000, ImageIO.read(getClass().getResource("/Maps/Pvp/PvpNPC.png")), gameScene.getTileSize());
             topNPC = new NPC("Top 20", 1693, 535, ImageIO.read(getClass().getResource("/NPC/top20NPC.png")), gameScene.getTileSize());
             mazeNPC = new NPC("Maze", 2092, 1075, ImageIO.read(getClass().getResource("/Maps/Maze/mazeNPC.png")), gameScene.getTileSize());
         } catch (IOException e) {
@@ -226,8 +226,8 @@ public class Map {
     }
 
     public void setNPCLocation(){
-        pvpNPC.setWorldX(1000);
-        pvpNPC.setWorldY(1000);
+        monsterHuntNPC.setWorldX(1000);
+        monsterHuntNPC.setWorldY(1000);
         topNPC.setWorldX(1693);
         topNPC.setWorldY(535);
         mazeNPC.setWorldX(2092);
@@ -240,7 +240,7 @@ public class Map {
      * @param g2d
      */
     protected void renderNPC(Graphics2D g2d) {
-        pvpNPC.checkDraw(player.getPlayer(), g2d);
+        monsterHuntNPC.checkDraw(player.getPlayer(), g2d);
         topNPC.checkDraw(player.getPlayer(), g2d);
         mazeNPC.checkDraw(player.getPlayer(), g2d);
     }
@@ -445,11 +445,19 @@ public class Map {
     }
 
     public NPC getPvpNPC() {
-        return pvpNPC;
+        return monsterHuntNPC;
     }
 
     public void setPvpNPC(NPC pvpNPC) {
-        this.pvpNPC = pvpNPC;
+        this.monsterHuntNPC = pvpNPC;
+    }
+    
+    public NPC getMonsterHuntNPC() {
+        return monsterHuntNPC;
+    }
+
+    public void setMonsterHuntNPC(NPC monsterHuntNPC) {
+        this.monsterHuntNPC = monsterHuntNPC;
     }
 
     public Entity[] getNpcs() {

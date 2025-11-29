@@ -36,7 +36,14 @@ public class Bullet {
     
     // Trail effect
     private ArrayList<int[]> trail = new ArrayList<>();
-    private static final int MAX_TRAIL_LENGTH = 5;
+    private static final int MAX_TRAIL_LENGTH = 8;
+    
+    // Rotation angle for smooth visual
+    private double rotationAngle = 0;
+    
+    // Float position for smooth movement
+    private float floatX;
+    private float floatY;
     
     public enum BulletType {
         NORMAL(25, 12.0f, 400, new Color(255, 200, 50)),      // Standard bullet
@@ -72,8 +79,10 @@ public class Bullet {
     }
     
     public Bullet(int x, int y, int direction, String playerShot, BulletType type) {
-        xPosi = x + 20; // Center offset
-        yPosi = y + 20;
+        this.floatX = x + 20; // Center offset
+        this.floatY = y + 20;
+        this.xPosi = (int) floatX;
+        this.yPosi = (int) floatY;
         this.direction = direction;
         this.type = type;
         this.damage = type.damage;
@@ -82,6 +91,9 @@ public class Bullet {
         
         // Calculate velocity components based on direction
         calculateVelocity();
+        
+        // Calculate rotation angle from velocity
+        rotationAngle = Math.atan2(velocityY, velocityX);
         
         try {
             bulletImg = ImageIO.read(getClass().getResource("/player/Bomb/bomb.PNG"));
@@ -102,8 +114,10 @@ public class Bullet {
      * @param type Bullet type
      */
     public Bullet(int x, int y, float dirX, float dirY, String playerShot, BulletType type) {
-        xPosi = x + 20; // Center offset
-        yPosi = y + 20;
+        this.floatX = x + 24; // Center offset (better centering)
+        this.floatY = y + 24;
+        this.xPosi = (int) floatX;
+        this.yPosi = (int) floatY;
         this.type = type;
         this.damage = type.damage;
         this.velocity = type.speed;
@@ -124,7 +138,10 @@ public class Bullet {
         velocityX = dirX * velocity;
         velocityY = dirY * velocity;
         
-        // Determine integer direction for rendering purposes
+        // Calculate rotation angle for rendering
+        rotationAngle = Math.atan2(dirY, dirX);
+        
+        // Determine integer direction for compatibility
         this.direction = calculateDirectionFromVector(dirX, dirY);
         
         try {
@@ -246,14 +263,14 @@ public class Bullet {
     }
     
     /**
-     * Kiểm tra va chạm với quái vật trong chế độ Score Battle
+     * Kiểm tra va chạm với quái vật trong chế độ Monster Hunt
      * @return gold earned if monster killed, 0 otherwise
      */
     public int checkMonsterCollision() {
         if (stop) return 0;
         
         GameScene gameScene = GameScene.getInstance();
-        if (!gameScene.getCurrentMap().equals("pvp")) return 0;
+        if (!gameScene.getCurrentMap().equals("hunt")) return 0;
         
         PvpMap pvpMap = gameScene.getPvpMap();
         if (!pvpMap.isGameStarted()) return 0;
@@ -261,16 +278,15 @@ public class Bullet {
         MonsterSpawner spawner = pvpMap.getMonsterSpawner();
         
         for (Monster monster : spawner.getMonsters()) {
-            if (!monster.isAlive()) continue;
+            if (!monster.isAlive() || monster.isDying()) continue;
             
             if (monster.checkBulletCollision(this)) {
                 stop = true;
                 
-                // Monster nhận damage
-                if (monster.takeDamage(damage)) {
+                // Monster nhận damage - takeDamage now returns gold if killed, 0 otherwise
+                int goldEarned = monster.takeDamage(damage);
+                if (goldEarned > 0) {
                     // Monster died - return gold reward
-                    int goldEarned = monster.getGoldReward();
-                    
                     // Gửi thông báo lên server
                     Client.getGameClient().sendToServer(
                         new Protocol().monsterKillPacket(playerShot, monster.getId(), goldEarned)
@@ -290,7 +306,7 @@ public class Bullet {
 
     private class BombShotThread extends Thread {
         boolean checkCollis;
-        int distanceTraveled = 0;
+        float distanceTraveled = 0;
         int maxDistance;
         int enemiesPierced = 0;
         int maxPierce = (type == BulletType.PIERCING) ? 3 : 1;
@@ -308,16 +324,21 @@ public class Bullet {
                 }
                 trail.add(new int[]{xPosi, yPosi});
                 
-                int oldXPosi = xPosi;
-                int oldYPosi = yPosi;
+                float oldX = floatX;
+                float oldY = floatY;
 
-                // Use velocity components for smooth diagonal movement
-                xPosi += (int) velocityX;
-                yPosi += (int) velocityY;
+                // Use float velocity for smooth diagonal movement
+                floatX += velocityX;
+                floatY += velocityY;
+                
+                // Update integer position
+                xPosi = (int) floatX;
+                yPosi = (int) floatY;
 
-                distanceTraveled += Math.sqrt(Math.pow(xPosi - oldXPosi, 2) + Math.pow(yPosi - oldYPosi, 2));
+                // Calculate distance using float values for accuracy
+                distanceTraveled += Math.sqrt(Math.pow(floatX - oldX, 2) + Math.pow(floatY - oldY, 2));
 
-                // Kiểm tra collision với quái trong Score Battle mode
+                // Kiểm tra collision với quái trong Monster Hunt mode
                 int goldEarned = checkMonsterCollision();
                 if (goldEarned > 0) {
                     GameScene.getInstance().getPvpMap().addScore(goldEarned);
@@ -334,7 +355,7 @@ public class Bullet {
                 }
 
                 try {
-                    Thread.sleep(30); // Faster update for smoother movement
+                    Thread.sleep(16); // ~60 FPS for smoother movement
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
@@ -344,34 +365,70 @@ public class Bullet {
     }
     
     /**
-     * Render bullet with trail effect
+     * Render bullet with trail effect and rotation
      */
     public void render(Graphics2D g2d, int screenX, int screenY) {
         if (stop) return;
         
+        // Save original composite
+        java.awt.Composite originalComposite = g2d.getComposite();
+        java.awt.geom.AffineTransform originalTransform = g2d.getTransform();
+        
         // Draw trail
         for (int i = 0; i < trail.size(); i++) {
-            float alpha = (float) (i + 1) / trail.size() * 0.5f;
+            float alpha = (float) (i + 1) / (trail.size() + 1) * 0.4f;
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            
+            int[] pos = trail.get(i);
+            // Calculate screen position for trail particle
+            int trailScreenX = screenX + (pos[0] - xPosi);
+            int trailScreenY = screenY + (pos[1] - yPosi);
+            
+            int size = 3 + (i * 2) / trail.size();
             g2d.setColor(type.color);
-            int size = 4 + i;
-            // Note: Trail positions would need screen coordinate conversion
+            g2d.fillOval(trailScreenX + 5 - size/2, trailScreenY + 5 - size/2, size, size);
         }
         
-        // Draw main bullet
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        // Restore composite for main bullet
+        g2d.setComposite(originalComposite);
         
-        // Glow effect
-        g2d.setColor(new Color(type.color.getRed(), type.color.getGreen(), type.color.getBlue(), 100));
+        // Outer glow
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+        g2d.setColor(type.color);
         g2d.fillOval(screenX - 4, screenY - 4, 18, 18);
         
-        // Main bullet
+        // Main bullet body
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
         g2d.setColor(type.color);
         g2d.fillOval(screenX, screenY, 10, 10);
         
-        // Highlight
-        g2d.setColor(Color.WHITE);
+        // Inner highlight
+        g2d.setColor(new Color(
+            Math.min(255, type.color.getRed() + 100),
+            Math.min(255, type.color.getGreen() + 100),
+            Math.min(255, type.color.getBlue() + 100)
+        ));
         g2d.fillOval(screenX + 2, screenY + 2, 4, 4);
+        
+        // Direction indicator (small line showing direction)
+        g2d.setColor(Color.WHITE);
+        int lineLength = 6;
+        int centerX = screenX + 5;
+        int centerY = screenY + 5;
+        int endX = centerX + (int)(Math.cos(rotationAngle) * lineLength);
+        int endY = centerY + (int)(Math.sin(rotationAngle) * lineLength);
+        g2d.drawLine(centerX, centerY, endX, endY);
+        
+        // Restore original state
+        g2d.setTransform(originalTransform);
+        g2d.setComposite(originalComposite);
+    }
+    
+    /**
+     * Get rotation angle for rendering
+     */
+    public double getRotationAngle() {
+        return rotationAngle;
     }
 
     public Image getBulletImg() {
