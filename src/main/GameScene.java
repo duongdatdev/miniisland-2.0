@@ -13,6 +13,7 @@ import input.MouseHandler;
 import maps.Map;
 import panes.chat.ChatPane;
 import panes.loading.LoadingPane;
+import panes.shop.ShopPane;
 
 import javax.swing.*;
 import java.awt.*;
@@ -50,6 +51,10 @@ public class GameScene extends JPanel implements Runnable {
     CustomButton teleportButtonPvpNPC;
     CustomButton topButton;
     CustomButton teleportButtonMazeNPC;
+    CustomButton shopButton;
+    
+    // Shop
+    private ShopPane shopPane;
 
     private int fps = 0;
 
@@ -247,6 +252,39 @@ public class GameScene extends JPanel implements Runnable {
         add(chatButton);
 
         add(teleportButtonMazeNPC);
+        
+        // Shop button and panel
+        shopButton = new CustomButton("Shop");
+        shopButton.setBounds(screenWidth - 120, 20, 50, 50);
+        shopButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (shopPane == null) {
+                    shopPane = new ShopPane(Client.getGameClient().getWebSocketClient());
+                    shopPane.setSize(550, 450);
+                    int centerX = (screenWidth - shopPane.getWidth()) / 2;
+                    int centerY = (screenHeight - shopPane.getHeight()) / 2;
+                    shopPane.setLocation(centerX, centerY);
+                    shopPane.setVisible(false);
+                    
+                    // Listener để đổi skin
+                    shopPane.setSkinChangeListener(skinFolder -> {
+                        player.changeSkin(skinFolder);
+                    });
+                    
+                    add(shopPane, 0);
+                }
+                shopPane.setVisible(!shopPane.isVisible());
+                if (shopPane.isVisible()) {
+                    if (Client.getGameClient() != null) {
+                        Client.getGameClient().sendToServer(new Protocol().getSkinsPacket());
+                        Client.getGameClient().sendToServer(new Protocol().getCoinsPacket());
+                    }
+                }
+                requestFocusInWindow();
+            }
+        });
+        add(shopButton);
 
         init();
     }
@@ -635,5 +673,13 @@ public class GameScene extends JPanel implements Runnable {
 
     public void setPlayerAlive(boolean isPlayerAlive) {
         this.isPlayerAlive = isPlayerAlive;
+    }
+    
+    public ShopPane getShopPane() {
+        return shopPane;
+    }
+    
+    public void setShopPane(ShopPane shopPane) {
+        this.shopPane = shopPane;
     }
 }

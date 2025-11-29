@@ -95,6 +95,21 @@ public class Player extends Entity {
         rightImages = ImageLoader.getInstance().rightImages[spriteIndex];
         standingImages = ImageLoader.getInstance().standingImages[spriteIndex];
     }
+    
+    /**
+     * Đổi skin theo folder name (vd: "1", "2")
+     */
+    public void changeSkin(String skinFolder) {
+        try {
+            int index = Integer.parseInt(skinFolder) - 1; // folder "1" = index 0
+            if (index >= 0 && index < ImageLoader.getInstance().upImages.length) {
+                changeSprite(index);
+                System.out.println("Skin changed to: " + skinFolder);
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid skin folder: " + skinFolder);
+        }
+    }
 
     public void setDefaultPosition() {
         screenX = gameScene.getScreenWidth() / 2 - gameScene.getTileSize() * scale / 2;

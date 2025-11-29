@@ -367,6 +367,46 @@ public class ClientRecivingThread extends Thread {
                         gameScene.getPvpMap().setPlayerHealth(remainingHealth);
                     }
                 }
+                // ============== Skin Shop Messages ==============
+                else if (sentence.startsWith("SkinsList")) {
+                    if (gameScene.getShopPane() != null) {
+                        gameScene.getShopPane().parseSkinsList(sentence);
+                    }
+                } else if (sentence.startsWith("PlayerCoins")) {
+                    if (gameScene.getShopPane() != null) {
+                        gameScene.getShopPane().parseCoins(sentence);
+                    }
+                } else if (sentence.startsWith("BuyResult")) {
+                    if (gameScene.getShopPane() != null) {
+                        gameScene.getShopPane().parseBuyResult(sentence);
+                    }
+                } else if (sentence.startsWith("PlayerSkins")) {
+                    if (gameScene.getShopPane() != null) {
+                        gameScene.getShopPane().parsePlayerSkins(sentence);
+                    }
+                } else if (sentence.startsWith("EquippedSkin")) {
+                    if (gameScene.getShopPane() != null) {
+                        gameScene.getShopPane().parseEquippedSkin(sentence);
+                    }
+                } else if (sentence.startsWith("ChangeSkin")) {
+                    // Player khác đổi skin: ChangeSkin,username,skinFolder
+                    String[] parts = sentence.split(",");
+                    if (parts.length >= 3) {
+                        String username = parts[1];
+                        String skinFolder = parts[2];
+                        
+                        // Đổi skin cho player khác
+                        if (!username.equals(clientPlayer.getUsername())) {
+                            // Tìm player trong map và đổi skin
+                            try {
+                                int skinIndex = Integer.parseInt(skinFolder) - 1;
+                                // Cần thêm method để đổi skin cho PlayerMP
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

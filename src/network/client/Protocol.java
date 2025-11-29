@@ -179,4 +179,48 @@ public class Protocol {
         message = "NewWave," + waveNumber;
         return message;
     }
+    
+    // ============== Skin Shop Protocols ==============
+    
+    /**
+     * Lấy danh sách skins trong shop
+     */
+    public String getSkinsPacket() {
+        return "Shop,GetSkins";
+    }
+    
+    /**
+     * Lấy coins
+     */
+    public String getCoinsPacket() {
+        return "Shop,GetCoins";
+    }
+    
+    /**
+     * Mua skin
+     */
+    public String buySkinPacket(int skinId) {
+        return "Shop,Buy," + skinId;
+    }
+    
+    /**
+     * Lấy skins đã sở hữu
+     */
+    public String getMySkinsPacket() {
+        return "Shop,GetMySkins";
+    }
+    
+    /**
+     * Equip skin
+     */
+    public String equipSkinPacket(int skinId) {
+        return "Shop,Equip," + skinId;
+    }
+    
+    /**
+     * Lấy skin đang equip
+     */
+    public String getEquippedSkinPacket() {
+        return "Shop,GetEquipped";
+    }
 }
