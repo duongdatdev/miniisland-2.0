@@ -435,4 +435,15 @@ public class PlayerMP {
     public void setAlive(boolean isAlive) {
         this.isAlive = isAlive;
     }
+    
+    /**
+     * Đổi skin cho player này
+     * @param skinFolder folder chứa skin (vd: "1", "2")
+     */
+    public void changeSkin(String skinFolder) {
+        if (player != null) {
+            player.changeSkin(skinFolder);
+            System.out.println("PlayerMP " + username + " changed skin to: " + skinFolder);
+        }
+    }
 }

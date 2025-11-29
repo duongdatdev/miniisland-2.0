@@ -177,26 +177,41 @@ public class Player extends Entity {
             
             // Get current effective speed
             int currentSpeed = getEffectiveSpeed();
+            
+            // Calculate movement direction
+            int moveX = 0;
+            int moveY = 0;
 
             if (keyHandler.isUp()) {
                 direction = "UP";
-                futureY -= currentSpeed;
+                moveY = -1;
                 movingY = true;
             }
             if (keyHandler.isDown()) {
                 direction = "DOWN";
-                futureY += currentSpeed;
+                moveY = 1;
                 movingY = true;
             }
             if (keyHandler.isLeft()) {
                 direction = "LEFT";
-                futureX -= currentSpeed;
+                moveX = -1;
                 movingX = true;
             }
             if (keyHandler.isRight()) {
                 direction = "RIGHT";
-                futureX += currentSpeed;
+                moveX = 1;
                 movingX = true;
+            }
+            
+            // Normalize diagonal movement to prevent faster speed
+            if (movingX && movingY) {
+                // Use ~0.707 factor for diagonal (1/sqrt(2))
+                double diagonalFactor = 0.7071;
+                futureX += (int)(moveX * currentSpeed * diagonalFactor);
+                futureY += (int)(moveY * currentSpeed * diagonalFactor);
+            } else {
+                futureX += moveX * currentSpeed;
+                futureY += moveY * currentSpeed;
             }
 
             count = 1;

@@ -86,6 +86,9 @@ public class MiniIsland extends JFrame {
         clientRecivingThread.start();
 
         client.sendToServer(new Protocol().HelloPacket(signInModel.getUsername()));
+        
+        // Request equipped skin after joining game
+        client.sendToServer(new Protocol().getEquippedSkinPacket());
 
         changeToGamePanel();
     }

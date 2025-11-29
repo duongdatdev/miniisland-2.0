@@ -385,6 +385,15 @@ public class ClientRecivingThread extends Thread {
                         gameScene.getShopPane().parsePlayerSkins(sentence);
                     }
                 } else if (sentence.startsWith("EquippedSkin")) {
+                    // Parse skin folder and apply to player
+                    String[] parts = sentence.split(",");
+                    if (parts.length >= 2) {
+                        String skinFolder = parts[1];
+                        // Đổi skin cho chính player này
+                        gameScene.getPlayer().changeSkin(skinFolder);
+                        System.out.println("Loaded equipped skin: " + skinFolder);
+                    }
+                    
                     if (gameScene.getShopPane() != null) {
                         gameScene.getShopPane().parseEquippedSkin(sentence);
                     }
@@ -397,13 +406,22 @@ public class ClientRecivingThread extends Thread {
                         
                         // Đổi skin cho player khác
                         if (!username.equals(clientPlayer.getUsername())) {
-                            // Tìm player trong map và đổi skin
-                            try {
-                                int skinIndex = Integer.parseInt(skinFolder) - 1;
-                                // Cần thêm method để đổi skin cho PlayerMP
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
+                            // Tìm player trong tất cả các map và đổi skin
+                            PlayerMP targetPlayer = gameScene.getLobbyMap().getPlayer(username);
+                            if (targetPlayer == null) {
+                                targetPlayer = gameScene.getPvpMap().getPlayer(username);
                             }
+                            if (targetPlayer == null) {
+                                targetPlayer = gameScene.getMazeMap().getPlayer(username);
+                            }
+                            
+                            if (targetPlayer != null) {
+                                targetPlayer.changeSkin(skinFolder);
+                                System.out.println("Changed skin for " + username + " to folder " + skinFolder);
+                            }
+                        } else {
+                            // Đổi skin cho chính mình
+                            gameScene.getPlayer().changeSkin(skinFolder);
                         }
                     }
                 }
