@@ -205,6 +205,8 @@ public class MonsterSpawner {
     public int checkPlayerCollision(Player player) {
         for (Monster monster : monsters) {
             if (monster.checkPlayerCollision(player) && monster.canAttack()) {
+                // Reset cooldown after dealing damage
+                monster.resetAttackCooldown();
                 return monster.getDamage();
             }
         }

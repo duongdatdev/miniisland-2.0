@@ -27,7 +27,7 @@ public class MazeMap extends Map {
     private boolean isGameWon = false;
     private int gameOverTimer = 0;
     private static final int GAME_OVER_DELAY = 180; // 3 seconds before restart option
-    private boolean scoreSent = false; // Đánh dấu đã gửi điểm chưa
+    private boolean scoreSent = false; // Flag to track if score has been sent
     
     // === NEW: Timer System ===
     private int mazeTimeLimit = 120; // 2 minutes in seconds
@@ -68,7 +68,7 @@ public class MazeMap extends Map {
         isGameOver = false;
         isGameWon = false;
         gameOverTimer = 0;
-        scoreSent = false; // Reset cờ gửi điểm
+        scoreSent = false; // Reset score sent flag
         
         // Reset score
         totalScore = 0;
@@ -305,7 +305,7 @@ public class MazeMap extends Map {
         
         totalScore = (int) ((totalScore + bonusPoints) * difficultyMultiplier);
         
-        // Gửi điểm lên server để cập nhật leaderboard
+        // Send score to server to update leaderboard
         if (!scoreSent) {
             sendScoreToServer(true);
             scoreSent = true;
@@ -313,7 +313,7 @@ public class MazeMap extends Map {
     }
     
     /**
-     * Gửi điểm lên server
+     * Send score to server
      */
     private void sendScoreToServer(boolean won) {
         String username = gameScene.getPlayerMP().getUsername();

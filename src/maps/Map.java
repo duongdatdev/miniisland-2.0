@@ -18,7 +18,7 @@ public class Map {
     protected int height = 16;
     protected BufferedImage[] tileSet;
     protected int[][] mapTileNum;
-    protected int[][] mapTileNumLayer2; // Layer 2 cho cầu
+    protected int[][] mapTileNumLayer2; // Layer 2 for bridges
     protected GameScene gameScene;
     protected int mapTileCol = 70;
     protected int mapTileRow = 50;
@@ -38,7 +38,7 @@ public class Map {
         players = new ArrayList<PlayerMP>();
         npcs = new Entity[2];
         mapTileNum = new int[mapTileCol][mapTileRow];
-        mapTileNumLayer2 = new int[mapTileCol][mapTileRow]; // Khởi tạo layer 2
+        mapTileNumLayer2 = new int[mapTileCol][mapTileRow]; // Initialize layer 2
 
         player = gameScene.getPlayerMP();
 
@@ -59,7 +59,7 @@ public class Map {
 //        loadMap("/Maps/Map_tiles.png");
         loadMap("/Maps/tileSet.png");
         readMap("/Maps/map_1.csv");
-        readMapLayer2("/Maps/map_1_Layer 2.csv"); // Đọc layer 2
+        readMapLayer2("/Maps/map_1_Layer 2.csv"); // Read layer 2
     }
 
     public void setHitBox() {
@@ -86,16 +86,16 @@ public class Map {
     }
 
     public void setTileType(int i) {
-        // Bridge tiles - CHỈ phần giữa cầu mới đi được
-        // Cầu dọc: 168, 185 (giữa)
-        // Cầu ngang: 165, 182, 199 (giữa)
-        // Giao điểm: 113, 114
+        // Bridge tiles - ONLY the middle part of bridges is walkable
+        // Vertical bridge: 168, 185 (middle)
+        // Horizontal bridge: 165, 182, 199 (middle)
+        // Intersections: 113, 114
         if (i == 168 || i == 185 ||  // Vertical bridge middle
             i == 165 || i == 182 || i == 199 ||  // Horizontal bridge middle
             i == 113 || i == 114) {  // Bridge intersections
             tiles[i].setType(TileType.Bridge);
         } 
-        // Bridge railings/edges - chặn không cho đi
+        // Bridge railings/edges - block movement
         else if (i == 167 || i == 169 ||  // Vertical bridge left/right rails
                  i == 184 || i == 186 ||  // Vertical bridge left/right rails (middle section)
                  i == 201 || i == 202 || i == 203 ||  // Vertical bridge bottom
@@ -287,13 +287,13 @@ public class Map {
     }
     
     /**
-     * Đọc Layer 2 CSV (chứa cầu, decorations phía trên)
+     * Read Layer 2 CSV (contains bridges, decorations on top)
      */
     public void readMapLayer2(String mapPath) {
         InputStream ip = getClass().getResourceAsStream(mapPath);
         if (ip == null) {
             System.out.println("Layer 2 not found: " + mapPath);
-            // Khởi tạo layer 2 với giá trị -1 (không có tile)
+            // Initialize layer 2 with -1 (no tile)
             for (int col = 0; col < mapTileCol; col++) {
                 for (int row = 0; row < mapTileRow; row++) {
                     mapTileNumLayer2[col][row] = -1;

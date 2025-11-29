@@ -166,7 +166,7 @@ public class GameScene extends JPanel implements Runnable {
                         sendRespawnPacket();
                         Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
                         
-                        // Reset game state - chờ SPACE để bắt đầu
+                        // Reset game state - wait for SPACE to start
                         pvpMap.resetGame();
                         break;
                     case "pvp":
@@ -267,7 +267,7 @@ public class GameScene extends JPanel implements Runnable {
                     shopPane.setLocation(centerX, centerY);
                     shopPane.setVisible(false);
                     
-                    // Listener để đổi skin
+                    // Listener for skin change
                     shopPane.setSkinChangeListener(skinFolder -> {
                         player.changeSkin(skinFolder);
                     });

@@ -97,7 +97,7 @@ public class Player extends Entity {
     }
     
     /**
-     * Đổi skin theo folder name (vd: "1", "2")
+     * Change skin by folder name (e.g., "1", "2")
      */
     public void changeSkin(String skinFolder) {
         try {

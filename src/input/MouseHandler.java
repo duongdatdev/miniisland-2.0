@@ -5,8 +5,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
 /**
- * MouseHandler - Xử lý input chuột cho game
- * Dùng để nhắm bắn và tương tác trong PvP mode
+ * MouseHandler - Handle mouse input for game
+ * Used for aiming and shooting in PvP mode
  */
 public class MouseHandler implements MouseListener, MouseMotionListener {
     

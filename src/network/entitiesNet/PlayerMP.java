@@ -437,8 +437,8 @@ public class PlayerMP {
     }
     
     /**
-     * Đổi skin cho player này
-     * @param skinFolder folder chứa skin (vd: "1", "2")
+     * Change skin for this player
+     * @param skinFolder folder containing skin (e.g., "1", "2")
      */
     public void changeSkin(String skinFolder) {
         if (player != null) {

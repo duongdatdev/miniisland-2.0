@@ -179,11 +179,6 @@ public class Monster extends Entity {
         if (distance < 300) {
             // Chase player
             chasePlayer(playerX, playerY);
-            
-            // Check attack
-            if (distance < attackRange && attackTimer <= 0) {
-                attackTimer = attackCooldown;
-            }
         } else {
             // Random movement
             randomMove();
@@ -381,5 +376,12 @@ public class Monster extends Entity {
     
     public boolean canAttack() {
         return attackTimer <= 0 && isAlive;
+    }
+    
+    /**
+     * Reset attack cooldown after dealing damage
+     */
+    public void resetAttackCooldown() {
+        this.attackTimer = attackCooldown;
     }
 }
