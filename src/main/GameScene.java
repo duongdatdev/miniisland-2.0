@@ -9,6 +9,7 @@ import network.entitiesNet.PlayerMP;
 import network.leaderBoard.LeaderBoard;
 import objects.entities.Player;
 import input.KeyHandler;
+import input.MouseHandler;
 import maps.Map;
 import panes.chat.ChatPane;
 import panes.loading.LoadingPane;
@@ -55,6 +56,7 @@ public class GameScene extends JPanel implements Runnable {
     private Thread gameThread;
 
     private KeyHandler keyHandler;
+    private MouseHandler mouseHandler;
     private Player player;
 
     //Network
@@ -86,7 +88,10 @@ public class GameScene extends JPanel implements Runnable {
 
     public GameScene(boolean isRunning) {
         keyHandler = new KeyHandler();
+        mouseHandler = new MouseHandler();
         this.addKeyListener(keyHandler);
+        this.addMouseListener(mouseHandler);
+        this.addMouseMotionListener(mouseHandler);
 
         collision = new Collision(this);
 
@@ -164,9 +169,10 @@ public class GameScene extends JPanel implements Runnable {
                         isPlayerAlive = true;
                         currentMap = "lobby";
                         
-                        // End Score Battle and send final score
+                        // End Score Battle and send final score with kills
                         int finalScore = pvpMap.getLocalPlayerScore();
-                        Client.getGameClient().sendToServer(new Protocol().scoreBattleEndPacket(playerMP.getUsername(), finalScore));
+                        int totalKills = pvpMap.getTotalKills();
+                        Client.getGameClient().sendToServer(new Protocol().scoreBattleEndPacket(playerMP.getUsername(), finalScore, totalKills));
                         pvpMap.resetGame();
                         pvpMap.removeAllPlayers();
 
@@ -325,12 +331,17 @@ public class GameScene extends JPanel implements Runnable {
         if (currentMap.equals("maze")) {
             mazeMap.update(player);
             
-            // Handle game over - press SPACE to return to lobby
-            if (mazeMap.isGameOver() && mazeMap.canRestart() && keyHandler.isSpace()) {
-                map.getMazeNPC().setWorldX(2092);
-                map.getMazeNPC().setWorldY(1075);
-                mazeMap.removeAllPlayers();
-                changeToLobby(mazeMap);
+            // Handle game over or win - press SPACE to return to lobby
+            if (mazeMap.canRestart() && keyHandler.isSpace()) {
+                if (mazeMap.isGameWon()) {
+                    returnToLobbyFromMaze();
+                } else {
+                    // Game over - return to lobby without bonus points
+                    map.getMazeNPC().setWorldX(2092);
+                    map.getMazeNPC().setWorldY(1075);
+                    mazeMap.removeAllPlayers();
+                    changeToLobby(mazeMap);
+                }
             }
         }
 
@@ -458,11 +469,25 @@ public class GameScene extends JPanel implements Runnable {
     }
 
     public void winMaze() {
+        // Calculate and display win screen with score
+        mazeMap.handleWin();
+        
+        // Wait for win screen to show before returning to lobby
+        // The actual return to lobby will be triggered by SPACE key
+    }
+    
+    /**
+     * Called when player presses SPACE after winning maze
+     */
+    public void returnToLobbyFromMaze() {
+        int finalScore = mazeMap.getTotalScore();
+        
         map.getMazeNPC().setWorldX(2092);
         map.getMazeNPC().setWorldY(1075);
         mazeMap.removeAllPlayers();
         changeToLobby(mazeMap);
 
+        // Send win packet with score to server
         Client.getGameClient().sendToServer(new Protocol().winMazePacket(playerMP.getUsername()));
     }
 
@@ -518,6 +543,10 @@ public class GameScene extends JPanel implements Runnable {
 
     public PlayerMP getPlayerMP() {
         return playerMP;
+    }
+    
+    public MouseHandler getMouseHandler() {
+        return mouseHandler;
     }
 
     public void setPlayerMP(PlayerMP playerMP) {

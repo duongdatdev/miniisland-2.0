@@ -18,6 +18,7 @@ public class Map {
     protected int height = 16;
     protected BufferedImage[] tileSet;
     protected int[][] mapTileNum;
+    protected int[][] mapTileNumLayer2; // Layer 2 cho cầu
     protected GameScene gameScene;
     protected int mapTileCol = 70;
     protected int mapTileRow = 50;
@@ -37,6 +38,7 @@ public class Map {
         players = new ArrayList<PlayerMP>();
         npcs = new Entity[2];
         mapTileNum = new int[mapTileCol][mapTileRow];
+        mapTileNumLayer2 = new int[mapTileCol][mapTileRow]; // Khởi tạo layer 2
 
         player = gameScene.getPlayerMP();
 
@@ -57,6 +59,7 @@ public class Map {
 //        loadMap("/Maps/Map_tiles.png");
         loadMap("/Maps/tileSet.png");
         readMap("/Maps/map_1.csv");
+        readMapLayer2("/Maps/map_1_Layer 2.csv"); // Đọc layer 2
     }
 
     public void setHitBox() {
@@ -83,11 +86,39 @@ public class Map {
     }
 
     public void setTileType(int i) {
-        if (i == 3) {
+        // Bridge tiles - CHỈ phần giữa cầu mới đi được
+        // Cầu dọc: 168, 185 (giữa)
+        // Cầu ngang: 165, 182, 199 (giữa)
+        // Giao điểm: 113, 114
+        if (i == 168 || i == 185 ||  // Vertical bridge middle
+            i == 165 || i == 182 || i == 199 ||  // Horizontal bridge middle
+            i == 113 || i == 114) {  // Bridge intersections
+            tiles[i].setType(TileType.Bridge);
+        } 
+        // Bridge railings/edges - chặn không cho đi
+        else if (i == 167 || i == 169 ||  // Vertical bridge left/right rails
+                 i == 184 || i == 186 ||  // Vertical bridge left/right rails (middle section)
+                 i == 201 || i == 202 || i == 203 ||  // Vertical bridge bottom
+                 i == 164 || i == 166 ||  // Horizontal bridge top corners
+                 i == 181 || i == 183 ||  // Horizontal bridge middle rails
+                 i == 198 || i == 200) {  // Horizontal bridge bottom corners
+            tiles[i].setType(TileType.Wall);
+        } else if (i == 3) {
             tiles[i].setType(TileType.Grass);
         } else if (i == 153) {
             tiles[i].setType(TileType.Water);
-        } else if (i == 78) {
+        } else if (i == 65 || i == 66 || i == 67 ||  // Top cliff edge corners and edge
+                   i == 78 || 
+                   i == 82 || i == 84 ||  // Left/right cliff edges
+                   i == 96 || i == 97 || i == 98 ||  // Inner corners
+                   i == 99 || i == 100 || i == 101 ||  // Bottom cliff edges
+                   i == 107 || i == 108 ||  // More cliff edges
+                   i == 115 ||  // Inner corner variants (removed 113, 114 - they are bridge)
+                   i == 124 || i == 125 ||  // Cliff corners
+                   i == 39 || i == 40 ||  // Grass-cliff transition edges
+                   i == 62 || i == 63 || i == 64 ||  // Top grass edges
+                   i == 79 || i == 81) {  // Left/right grass edges
+            // Wall tiles - includes cliffs/brown edges that block movement
             tiles[i].setType(TileType.Wall);
         } else {
             // Set default type for all other tiles (safe to walk on)
@@ -110,7 +141,7 @@ public class Map {
         int startRow = Math.max(0, (playerWorldY - playerScreenY) / tileSize - 1);
         int endRow = Math.min(mapTileRow, (playerWorldY + playerScreenY) / tileSize + 2);
         
-        // Draw only visible tiles
+        // Draw Layer 1 - Base tiles
         for (int worldRow = startRow; worldRow < endRow; worldRow++) {
             for (int worldCol = startCol; worldCol < endCol; worldCol++) {
                 int tileNum = mapTileNum[worldCol][worldRow];
@@ -166,6 +197,32 @@ public class Map {
                 g2d.drawImage(chatImage, screenX - 50, screenY - 20 - chatImage.getHeight(), null);
             }
         }
+        
+        // Draw Layer 2 - Overlay tiles (bridges, etc.) - render on top of players
+        drawLayer2(g2d, tileSize, startCol, endCol, startRow, endRow, playerWorldX, playerWorldY, playerScreenX, playerScreenY);
+    }
+    
+    /**
+     * Draw Layer 2 tiles (bridges, decorations) on top of everything
+     */
+    protected void drawLayer2(Graphics2D g2d, int tileSize, int startCol, int endCol, int startRow, int endRow,
+                            int playerWorldX, int playerWorldY, int playerScreenX, int playerScreenY) {
+        for (int worldRow = startRow; worldRow < endRow; worldRow++) {
+            for (int worldCol = startCol; worldCol < endCol; worldCol++) {
+                int tileNum = mapTileNumLayer2[worldCol][worldRow];
+                
+                // Skip empty tiles (-1 or tiles that don't exist)
+                if (tileNum < 0 || tileNum >= tiles.length) continue;
+                
+                int worldX = worldCol * tileSize;
+                int worldY = worldRow * tileSize;
+                
+                int screenX = worldX - playerWorldX + playerScreenX;
+                int screenY = worldY - playerWorldY + playerScreenY;
+                
+                g2d.drawImage(tiles[tileNum].getImage(), screenX, screenY, tileSize, tileSize, null);
+            }
+        }
     }
 
     public void setNPCLocation(){
@@ -218,6 +275,53 @@ public class Map {
                     row++;
                 }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    /**
+     * Đọc Layer 2 CSV (chứa cầu, decorations phía trên)
+     */
+    public void readMapLayer2(String mapPath) {
+        InputStream ip = getClass().getResourceAsStream(mapPath);
+        if (ip == null) {
+            System.out.println("Layer 2 not found: " + mapPath);
+            // Khởi tạo layer 2 với giá trị -1 (không có tile)
+            for (int col = 0; col < mapTileCol; col++) {
+                for (int row = 0; row < mapTileRow; row++) {
+                    mapTileNumLayer2[col][row] = -1;
+                }
+            }
+            return;
+        }
+        
+        BufferedReader br = new BufferedReader(new InputStreamReader(ip));
+
+        int row = 0;
+        int col = 0;
+
+        try {
+            while (row < mapTileRow) {
+                String line = br.readLine();
+                if (line == null) break;
+                
+                String[] numbers = line.split(",");
+                col = 0;
+                while (col < mapTileCol && col < numbers.length) {
+                    int tileNum = Integer.parseInt(numbers[col].trim());
+                    mapTileNumLayer2[col][row] = tileNum;
+                    col++;
+                }
+                row++;
+            }
+            System.out.println("Layer 2 loaded successfully!");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -299,6 +403,14 @@ public class Map {
     public void setMapTileNum(int[][] mapTileNum) {
         this.mapTileNum = mapTileNum;
     }
+    
+    public int[][] getMapTileNumLayer2() {
+        return mapTileNumLayer2;
+    }
+
+    public void setMapTileNumLayer2(int[][] mapTileNumLayer2) {
+        this.mapTileNumLayer2 = mapTileNumLayer2;
+    }
 
     public GameScene getGameScene() {
         return gameScene;
@@ -363,6 +475,7 @@ public class Map {
      * - Water: Blue semi-transparent  
      * - FinishLine: Green semi-transparent
      * - Hole: Yellow semi-transparent
+     * - Bridge: Cyan semi-transparent (walkable over water)
      * - Safe tiles: No overlay
      */
     private void drawDebugCollisionTiles(Graphics2D g2d, int tileNum, int screenX, int screenY, int tileSize) {
@@ -396,6 +509,9 @@ public class Map {
                 break;
             case Hole:
                 debugColor = new Color(255, 255, 0, 80); // Yellow
+                break;
+            case Bridge:
+                debugColor = new Color(0, 255, 255, 80); // Cyan - walkable bridge
                 break;
             default:
                 return; // No overlay for safe tiles (Grass, etc.)

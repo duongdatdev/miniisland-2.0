@@ -5,6 +5,12 @@ import java.awt.event.KeyListener;
 
 public class KeyHandler implements KeyListener {
     private boolean up, down, left, right, space;
+    private boolean shift; // For dash
+    private boolean qKey;  // For cycling bullet types
+    private boolean eKey;  // For interact/special action
+    
+    // Arrow keys for 8-directional aiming (separate from movement)
+    private boolean aimUp, aimDown, aimLeft, aimRight;
 
     public KeyHandler() {
         up = false;
@@ -12,6 +18,13 @@ public class KeyHandler implements KeyListener {
         left = false;
         right = false;
         space = false;
+        shift = false;
+        qKey = false;
+        eKey = false;
+        aimUp = false;
+        aimDown = false;
+        aimLeft = false;
+        aimRight = false;
     }
 
     @Override
@@ -23,11 +36,19 @@ public class KeyHandler implements KeyListener {
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
         switch (keyCode) {
-            case KeyEvent.VK_W, KeyEvent.VK_UP -> up = true;
-            case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = true;
-            case KeyEvent.VK_S, KeyEvent.VK_DOWN -> down = true;
-            case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = true;
+            case KeyEvent.VK_W -> up = true;
+            case KeyEvent.VK_A -> left = true;
+            case KeyEvent.VK_S -> down = true;
+            case KeyEvent.VK_D -> right = true;
             case KeyEvent.VK_SPACE -> space = true;
+            case KeyEvent.VK_SHIFT -> shift = true;
+            case KeyEvent.VK_Q -> qKey = true;
+            case KeyEvent.VK_E -> eKey = true;
+            // Arrow keys for aiming
+            case KeyEvent.VK_UP -> aimUp = true;
+            case KeyEvent.VK_DOWN -> aimDown = true;
+            case KeyEvent.VK_LEFT -> aimLeft = true;
+            case KeyEvent.VK_RIGHT -> aimRight = true;
         }
     }
 
@@ -35,11 +56,19 @@ public class KeyHandler implements KeyListener {
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
         switch (keyCode) {
-            case KeyEvent.VK_W, KeyEvent.VK_UP -> up = false;
-            case KeyEvent.VK_DOWN, KeyEvent.VK_S -> down = false;
-            case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = false;
-            case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = false;
+            case KeyEvent.VK_W -> up = false;
+            case KeyEvent.VK_S -> down = false;
+            case KeyEvent.VK_A -> left = false;
+            case KeyEvent.VK_D -> right = false;
             case KeyEvent.VK_SPACE -> space = false;
+            case KeyEvent.VK_SHIFT -> shift = false;
+            case KeyEvent.VK_Q -> qKey = false;
+            case KeyEvent.VK_E -> eKey = false;
+            // Arrow keys for aiming
+            case KeyEvent.VK_UP -> aimUp = false;
+            case KeyEvent.VK_DOWN -> aimDown = false;
+            case KeyEvent.VK_LEFT -> aimLeft = false;
+            case KeyEvent.VK_RIGHT -> aimRight = false;
         }
     }
 
@@ -49,6 +78,13 @@ public class KeyHandler implements KeyListener {
         left = false;
         right = false;
         space = false;
+        shift = false;
+        qKey = false;
+        eKey = false;
+        aimUp = false;
+        aimDown = false;
+        aimLeft = false;
+        aimRight = false;
     }
 
     public boolean isUp() {
@@ -70,6 +106,62 @@ public class KeyHandler implements KeyListener {
     public boolean isSpace() {
         return space;
     }
+    
+    public boolean isShift() {
+        return shift;
+    }
+    
+    public boolean isQKey() {
+        return qKey;
+    }
+    
+    public boolean isEKey() {
+        return eKey;
+    }
+    
+    // Aim direction getters
+    public boolean isAimUp() {
+        return aimUp;
+    }
+    
+    public boolean isAimDown() {
+        return aimDown;
+    }
+    
+    public boolean isAimLeft() {
+        return aimLeft;
+    }
+    
+    public boolean isAimRight() {
+        return aimRight;
+    }
+    
+    /**
+     * Check if any aim key is pressed
+     */
+    public boolean isAiming() {
+        return aimUp || aimDown || aimLeft || aimRight;
+    }
+    
+    /**
+     * Get horizontal aim direction (-1, 0, 1)
+     */
+    public int getAimDirectionX() {
+        int dir = 0;
+        if (aimLeft) dir -= 1;
+        if (aimRight) dir += 1;
+        return dir;
+    }
+    
+    /**
+     * Get vertical aim direction (-1, 0, 1)
+     */
+    public int getAimDirectionY() {
+        int dir = 0;
+        if (aimUp) dir -= 1;
+        if (aimDown) dir += 1;
+        return dir;
+    }
 
     public void setSpace(boolean space) {
         this.space = space;
@@ -89,5 +181,13 @@ public class KeyHandler implements KeyListener {
 
     public void setRight(boolean right) {
         this.right = right;
+    }
+    
+    public void setShift(boolean shift) {
+        this.shift = shift;
+    }
+    
+    public void setQKey(boolean qKey) {
+        this.qKey = qKey;
     }
 }

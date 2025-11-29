@@ -1,9 +1,11 @@
 package network.entitiesNet;
 
+import input.MouseHandler;
 import main.GameScene;
 import network.client.Client;
 import network.client.Protocol;
 import objects.entities.Bullet;
+import objects.entities.Bullet.BulletType;
 import objects.entities.Player;
 import panes.chat.DialogText;
 
@@ -23,6 +25,21 @@ public class PlayerMP {
     //Bullets - Optimized with ArrayList
     private ArrayList<Bullet> bullets = new ArrayList<>();
     private static final int MAX_BULLETS = 100; // Reasonable limit
+    
+    // === NEW: Shooting System ===
+    private BulletType currentBulletType = BulletType.NORMAL;
+    private long lastShotTime;
+    private int shotCooldown = 250; // Base cooldown in ms
+    private boolean autoFire = false;
+    
+    // === NEW: Aim Direction (for 8-way shooting) ===
+    private int aimDirection = 1; // Current aim direction
+    private boolean isAiming = false;
+    
+    // === NEW: Mouse aiming ===
+    private boolean useMouseAiming = true; // Enable mouse aiming in PvP
+    private float mouseAimX = 0;
+    private float mouseAimY = 0;
 
     private BufferedImage chatImage;
     private Timer chatImageTimer;
@@ -30,8 +47,6 @@ public class PlayerMP {
     private DialogText dialogText;
 
     private boolean isAlive = true;
-
-    private long lastShotTime;
 
     public PlayerMP(Player player) {
         this.player = player;
@@ -148,7 +163,9 @@ public class PlayerMP {
 
     public void shot() {
         long currentTime = System.currentTimeMillis();
-        if (currentTime - lastShotTime >= 300) { // 300 milliseconds cooldown
+        int actualCooldown = getCooldownForBulletType();
+        
+        if (currentTime - lastShotTime >= actualCooldown) {
             String currentMap = GameScene.getInstance().getCurrentMap();
             // Allow shooting in both pvp mode (Score Battle) and original pvp
             if (currentMap.equals("pvp")) {
@@ -156,8 +173,30 @@ public class PlayerMP {
                 bullets.removeIf(b -> b.stop);
                 
                 if (bullets.size() < MAX_BULLETS) {
-                    int bombDirection = direction != 0 ? direction : lastDirection;
-                    Bullet newBullet = new Bullet(this.getX(), this.getY(), bombDirection, username);
+                    GameScene gs = GameScene.getInstance();
+                    MouseHandler mouse = gs.getMouseHandler();
+                    
+                    Bullet newBullet;
+                    
+                    // Use mouse aiming if enabled and in PvP
+                    if (useMouseAiming && mouse != null) {
+                        // Create bullet with mouse direction
+                        newBullet = new Bullet(
+                            this.getX(), this.getY(),
+                            mouse.getAimDirectionX(), mouse.getAimDirectionY(),
+                            username, currentBulletType
+                        );
+                    } else {
+                        // Fallback to keyboard direction
+                        int bombDirection = getShootDirection();
+                        newBullet = new Bullet(this.getX(), this.getY(), bombDirection, username, currentBulletType);
+                    }
+                    
+                    // Apply damage multiplier from PvP map if available
+                    if (gs.getPvpMap() != null && gs.getPvpMap().getDamageMultiplier() > 1.0f) {
+                        newBullet.setDamage((int)(newBullet.getDamage() * gs.getPvpMap().getDamageMultiplier()));
+                    }
+                    
                     newBullet.startBombThread(true);
                     bullets.add(newBullet);
                     
@@ -166,6 +205,106 @@ public class PlayerMP {
             }
             lastShotTime = currentTime;
         }
+    }
+    
+    /**
+     * Shoot with mouse - called when left mouse is held
+     */
+    public void shootWithMouse() {
+        GameScene gs = GameScene.getInstance();
+        if (gs.getCurrentMap().equals("pvp")) {
+            shot();
+        }
+    }
+    
+    /**
+     * Enable/disable mouse aiming
+     */
+    public void setUseMouseAiming(boolean use) {
+        this.useMouseAiming = use;
+    }
+    
+    public boolean isUseMouseAiming() {
+        return useMouseAiming;
+    }
+    
+    /**
+     * Get shoot direction supporting 8-way shooting
+     */
+    private int getShootDirection() {
+        // Use aim direction if explicitly aiming, otherwise use movement direction
+        if (isAiming) {
+            return aimDirection;
+        }
+        return direction != 0 ? direction : lastDirection;
+    }
+    
+    /**
+     * Get cooldown based on bullet type
+     */
+    private int getCooldownForBulletType() {
+        switch (currentBulletType) {
+            case RAPID:
+                return 150; // Faster shooting
+            case HEAVY:
+                return 400; // Slower shooting
+            case PIERCING:
+                return 350;
+            default:
+                return shotCooldown;
+        }
+    }
+    
+    /**
+     * Set aim direction for 8-way shooting
+     */
+    public void setAimDirection(int horizontal, int vertical) {
+        isAiming = true;
+        
+        if (horizontal == 0 && vertical < 0) {
+            aimDirection = Bullet.DIR_UP;
+        } else if (horizontal == 0 && vertical > 0) {
+            aimDirection = Bullet.DIR_DOWN;
+        } else if (horizontal < 0 && vertical == 0) {
+            aimDirection = Bullet.DIR_LEFT;
+        } else if (horizontal > 0 && vertical == 0) {
+            aimDirection = Bullet.DIR_RIGHT;
+        } else if (horizontal < 0 && vertical < 0) {
+            aimDirection = Bullet.DIR_UP_LEFT;
+        } else if (horizontal > 0 && vertical < 0) {
+            aimDirection = Bullet.DIR_UP_RIGHT;
+        } else if (horizontal < 0 && vertical > 0) {
+            aimDirection = Bullet.DIR_DOWN_LEFT;
+        } else if (horizontal > 0 && vertical > 0) {
+            aimDirection = Bullet.DIR_DOWN_RIGHT;
+        }
+    }
+    
+    /**
+     * Stop aiming (will use movement direction)
+     */
+    public void stopAiming() {
+        isAiming = false;
+    }
+    
+    /**
+     * Cycle through bullet types
+     */
+    public void cycleBulletType() {
+        BulletType[] types = BulletType.values();
+        int currentIndex = currentBulletType.ordinal();
+        currentBulletType = types[(currentIndex + 1) % types.length];
+    }
+    
+    /**
+     * Set specific bullet type
+     */
+    public void setBulletType(BulletType type) {
+        this.currentBulletType = type;
+    }
+    
+    public BulletType getCurrentBulletType() {
+        return currentBulletType;
     }
 
     public void Shot() {

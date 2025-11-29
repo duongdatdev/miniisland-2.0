@@ -37,6 +37,20 @@ public class Player extends Entity {
     private int slowEffectTimer = 0;
     private float speedMultiplier = 1.0f;
     private int baseSpeed = 3;
+    
+    // === NEW: Dash System ===
+    private boolean isDashing = false;
+    private int dashTimer = 0;
+    private int dashCooldown = 0;
+    private static final int DASH_DURATION = 8;      // Frames of dash
+    private static final int DASH_COOLDOWN = 90;     // Cooldown frames (1.5 seconds)
+    private static final int DASH_SPEED = 12;        // Speed during dash
+    private int dashDirectionX = 0;
+    private int dashDirectionY = 0;
+    
+    // === NEW: PvP Mode Speed Boost ===
+    private boolean pvpModeActive = false;
+    private static final int PVP_SPEED_BONUS = 1;    // Extra speed in PvP
 
     public Player(GameScene gameScene, KeyHandler keyHandler) {
         this.keyHandler = keyHandler;
@@ -111,7 +125,26 @@ public class Player extends Entity {
             slowEffectTimer--;
             if (slowEffectTimer <= 0) {
                 speedMultiplier = 1.0f;
-                speed = baseSpeed;
+                speed = getEffectiveSpeed();
+            }
+        }
+        
+        // Update dash cooldown
+        if (dashCooldown > 0) {
+            dashCooldown--;
+        }
+        
+        // Handle dash movement
+        if (isDashing) {
+            dashTimer--;
+            if (dashTimer <= 0) {
+                isDashing = false;
+                speed = getEffectiveSpeed();
+            } else {
+                // Move in dash direction
+                worldX += dashDirectionX * DASH_SPEED;
+                worldY += dashDirectionY * DASH_SPEED;
+                return; // Skip normal movement during dash
             }
         }
 
@@ -126,25 +159,28 @@ public class Player extends Entity {
             
             boolean movingX = false;
             boolean movingY = false;
+            
+            // Get current effective speed
+            int currentSpeed = getEffectiveSpeed();
 
             if (keyHandler.isUp()) {
                 direction = "UP";
-                futureY -= speed;
+                futureY -= currentSpeed;
                 movingY = true;
             }
             if (keyHandler.isDown()) {
                 direction = "DOWN";
-                futureY += speed;
+                futureY += currentSpeed;
                 movingY = true;
             }
             if (keyHandler.isLeft()) {
                 direction = "LEFT";
-                futureX -= speed;
+                futureX -= currentSpeed;
                 movingX = true;
             }
             if (keyHandler.isRight()) {
                 direction = "RIGHT";
-                futureX += speed;
+                futureX += currentSpeed;
                 movingX = true;
             }
 
@@ -188,9 +224,46 @@ public class Player extends Entity {
             worldY = futureY;
         }
         
-        // Allow shooting while moving - check space key independently
-        if (isSpace()) {
-            gameScene.getPlayerMP().shot();
+        // Handle shooting based on map type
+        String currentMap = gameScene.getCurrentMap();
+        if (currentMap.equals("pvp")) {
+            // In PvP: Use mouse for shooting (left click held)
+            if (gameScene.getMouseHandler() != null && gameScene.getMouseHandler().isLeftHeld()) {
+                // Update mouse handler screen center for aiming
+                gameScene.getMouseHandler().setScreenCenter(screenX + 24, screenY + 24);
+                gameScene.getPlayerMP().shootWithMouse();
+            }
+        } else {
+            // In other maps: Use space bar for shooting
+            if (isSpace()) {
+                gameScene.getPlayerMP().shot();
+            }
+        }
+        
+        // Right click for dash in PvP
+        if (currentMap.equals("pvp") && gameScene.getMouseHandler() != null) {
+            if (gameScene.getMouseHandler().isRightHeld() && canDash()) {
+                performDash();
+            }
+        } else if (keyHandler.isShift() && canDash()) {
+            // Shift for dash in other maps
+            performDash();
+        }
+        
+        // Update aim direction for 8-way shooting (keyboard fallback)
+        if (keyHandler.isAiming()) {
+            gameScene.getPlayerMP().setAimDirection(
+                keyHandler.getAimDirectionX(),
+                keyHandler.getAimDirectionY()
+            );
+        } else {
+            gameScene.getPlayerMP().stopAiming();
+        }
+        
+        // Cycle bullet type with Q key or middle mouse button
+        if (keyHandler.isQKey() || (gameScene.getMouseHandler() != null && gameScene.getMouseHandler().isMiddleClick())) {
+            gameScene.getPlayerMP().cycleBulletType();
+            keyHandler.setQKey(false);
         }
         
         // Handle standing state when not moving
@@ -202,6 +275,86 @@ public class Player extends Entity {
             count = 0;
         }
 
+    }
+    
+    /**
+     * Get effective speed considering PvP mode and multipliers
+     */
+    private int getEffectiveSpeed() {
+        int effectiveSpeed = baseSpeed;
+        
+        // Add PvP speed bonus
+        if (pvpModeActive) {
+            effectiveSpeed += PVP_SPEED_BONUS;
+        }
+        
+        // Apply speed multiplier (from power-ups or debuffs)
+        effectiveSpeed = (int)(effectiveSpeed * speedMultiplier);
+        
+        // Apply PvP map speed multiplier if available
+        if (gameScene != null && gameScene.getCurrentMap().equals("pvp")) {
+            float pvpSpeedMultiplier = gameScene.getPvpMap().getSpeedMultiplier();
+            if (pvpSpeedMultiplier > 1.0f) {
+                effectiveSpeed = (int)(effectiveSpeed * pvpSpeedMultiplier);
+            }
+        }
+        
+        return Math.max(1, effectiveSpeed); // Minimum speed of 1
+    }
+    
+    /**
+     * Check if player can dash
+     */
+    public boolean canDash() {
+        return !isDashing && dashCooldown <= 0 && isMove();
+    }
+    
+    /**
+     * Perform dash in current movement direction
+     */
+    public void performDash() {
+        if (!canDash()) return;
+        
+        isDashing = true;
+        dashTimer = DASH_DURATION;
+        dashCooldown = DASH_COOLDOWN;
+        invincibilityFrames = DASH_DURATION; // Brief invincibility during dash
+        
+        // Set dash direction based on current movement
+        dashDirectionX = 0;
+        dashDirectionY = 0;
+        
+        if (keyHandler.isUp()) dashDirectionY = -1;
+        if (keyHandler.isDown()) dashDirectionY = 1;
+        if (keyHandler.isLeft()) dashDirectionX = -1;
+        if (keyHandler.isRight()) dashDirectionX = 1;
+        
+        // Normalize diagonal dash
+        if (dashDirectionX != 0 && dashDirectionY != 0) {
+            // Keep full speed for diagonal - feels better
+        }
+    }
+    
+    /**
+     * Set PvP mode for speed bonus
+     */
+    public void setPvpModeActive(boolean active) {
+        this.pvpModeActive = active;
+        speed = getEffectiveSpeed();
+    }
+    
+    /**
+     * Check if currently dashing
+     */
+    public boolean isDashing() {
+        return isDashing;
+    }
+    
+    /**
+     * Get dash cooldown percentage (0-1)
+     */
+    public float getDashCooldownPercent() {
+        return dashCooldown > 0 ? (float) dashCooldown / DASH_COOLDOWN : 0;
     }
 
     public void render(Graphics2D g2d, int tileSize) {

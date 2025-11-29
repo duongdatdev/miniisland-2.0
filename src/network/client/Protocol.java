@@ -125,10 +125,18 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo game kết thúc
+     * Gửi thông báo game kết thúc với điểm và kills để cập nhật leaderboard
      */
-    public String scoreBattleEndPacket(String username, int finalScore) {
-        message = "ScoreBattleEnd," + username + "," + finalScore;
+    public String scoreBattleEndPacket(String username, int finalScore, int kills) {
+        message = "ScoreBattleEnd," + username + "," + finalScore + "," + kills;
+        return message;
+    }
+    
+    /**
+     * Gửi điểm maze khi kết thúc game
+     */
+    public String mazeEndPacket(String username, int score, int coinsCollected, boolean won) {
+        message = "MazeEnd," + username + "," + score + "," + coinsCollected + "," + (won ? "1" : "0");
         return message;
     }
     

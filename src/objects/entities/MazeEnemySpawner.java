@@ -224,16 +224,29 @@ public class MazeEnemySpawner {
         // End position: finish line (tile type 2)
         HashSet<String> safePath = findSafePath(mazeMap);
         
-        // Place more traps since there are no enemies
-        int trapCount = Math.max(8, (mapCols * mapRows) / 50);
+        // Place traps - mix of different types
+        int trapCount = Math.max(10, (mapCols * mapRows) / 40);
         
         for (int i = 0; i < trapCount; i++) {
             int[] pos = findValidTrapPosition(mazeMap, safePath);
             if (pos != null) {
-                // Only SPIKE traps - hidden surprise traps that deal 30% damage
-                traps.add(new Trap(pos[0], pos[1], tileSize, Trap.TrapType.SPIKE));
+                // Variety of trap types
+                Trap.TrapType type = selectTrapType();
+                traps.add(new Trap(pos[0], pos[1], tileSize, type));
             }
         }
+    }
+    
+    /**
+     * Select trap type with weighted randomness
+     */
+    private Trap.TrapType selectTrapType() {
+        Random rand = new Random();
+        int roll = rand.nextInt(100);
+        
+        if (roll < 50) return Trap.TrapType.SPIKE;        // 50% - standard damage
+        if (roll < 75) return Trap.TrapType.SLOW;         // 25% - slows player
+        return Trap.TrapType.POISON;                       // 25% - damage over time
     }
     
     /**
@@ -490,16 +503,20 @@ public class MazeEnemySpawner {
         private static final int REVEAL_DURATION = 60; // Show trap for 1 second after trigger
         
         public enum TrapType {
-            SPIKE(30, 180, false);   // 30% damage (30 HP), long cooldown, surprise trap
+            SPIKE(30, 180, false, new Color(200, 50, 50)),    // 30% damage
+            SLOW(10, 120, false, new Color(100, 100, 255)),    // 10% damage + slow
+            POISON(15, 90, false, new Color(100, 200, 50));    // 15% damage, fast reset
             
             public final int damage;
             public final int cooldown;
             public final boolean isDeadly;
+            public final Color color;
             
-            TrapType(int damage, int cooldown, boolean isDeadly) {
+            TrapType(int damage, int cooldown, boolean isDeadly, Color color) {
                 this.damage = damage;
                 this.cooldown = cooldown;
                 this.isDeadly = isDeadly;
+                this.color = color;
             }
         }
         
@@ -508,12 +525,14 @@ public class MazeEnemySpawner {
             public float speedMultiplier;
             public int duration;
             public boolean isDeadly;
+            public TrapType type;
             
-            public TrapEffect(int damage, float speedMultiplier, int duration, boolean isDeadly) {
+            public TrapEffect(int damage, float speedMultiplier, int duration, boolean isDeadly, TrapType type) {
                 this.damage = damage;
                 this.speedMultiplier = speedMultiplier;
                 this.duration = duration;
                 this.isDeadly = isDeadly;
+                this.type = type;
             }
         }
         
@@ -568,8 +587,17 @@ public class MazeEnemySpawner {
             hasBeenTriggered = true;
             revealTimer = REVEAL_DURATION;
             
-            // Spike trap deals 30% damage
-            return new TrapEffect(type.damage, 1.0f, 0, false);
+            // Different effects based on trap type
+            switch (type) {
+                case SPIKE:
+                    return new TrapEffect(type.damage, 1.0f, 0, false, type);
+                case SLOW:
+                    return new TrapEffect(type.damage, 0.5f, 180, false, type); // 50% speed for 3 seconds
+                case POISON:
+                    return new TrapEffect(type.damage, 1.0f, 0, false, type);
+                default:
+                    return new TrapEffect(type.damage, 1.0f, 0, false, type);
+            }
         }
         
         public void render(Graphics2D g2d, int screenX, int screenY, int tileSize) {
@@ -583,7 +611,24 @@ public class MazeEnemySpawner {
                 g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
             }
             
-            // Draw spike trap with dramatic reveal effect
+            // Draw trap based on type
+            switch (type) {
+                case SPIKE:
+                    drawSpikeTrap(g2d, screenX, screenY, tileSize);
+                    break;
+                case SLOW:
+                    drawSlowTrap(g2d, screenX, screenY, tileSize);
+                    break;
+                case POISON:
+                    drawPoisonTrap(g2d, screenX, screenY, tileSize);
+                    break;
+            }
+            
+            // Reset composite
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        }
+        
+        private void drawSpikeTrap(Graphics2D g2d, int screenX, int screenY, int tileSize) {
             // Red danger zone
             g2d.setColor(new Color(200, 50, 50, 180));
             g2d.fillRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
@@ -602,9 +647,51 @@ public class MazeEnemySpawner {
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 14));
             g2d.drawString("!", screenX + tileSize/2 - 3, screenY + 16);
+        }
+        
+        private void drawSlowTrap(Graphics2D g2d, int screenX, int screenY, int tileSize) {
+            // Blue ice zone
+            g2d.setColor(new Color(100, 150, 255, 180));
+            g2d.fillRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
             
-            // Reset composite
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+            // Ice crystals pattern
+            g2d.setColor(new Color(200, 230, 255));
+            int offset = animFrame * 2;
+            for (int i = 0; i < 3; i++) {
+                int cx = screenX + 10 + i * 14;
+                int cy = screenY + 12 + (i % 2) * 10 + offset % 8;
+                g2d.fillPolygon(
+                    new int[]{cx, cx + 6, cx + 3},
+                    new int[]{cy + 8, cy + 8, cy},
+                    3
+                );
+            }
+            
+            // Snowflake symbol
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 16));
+            g2d.drawString("❄", screenX + tileSize/2 - 6, screenY + tileSize - 8);
+        }
+        
+        private void drawPoisonTrap(Graphics2D g2d, int screenX, int screenY, int tileSize) {
+            // Green poison zone
+            g2d.setColor(new Color(80, 180, 50, 180));
+            g2d.fillRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
+            
+            // Bubbles animation
+            g2d.setColor(new Color(150, 255, 100, 200));
+            int bubbleOffset = animFrame * 3;
+            for (int i = 0; i < 4; i++) {
+                int bx = screenX + 8 + (i * 10);
+                int by = screenY + tileSize - 15 - (bubbleOffset + i * 5) % 20;
+                int bsize = 4 + (i % 2) * 2;
+                g2d.fillOval(bx, by, bsize, bsize);
+            }
+            
+            // Skull symbol
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            g2d.drawString("☠", screenX + tileSize/2 - 6, screenY + 18);
         }
         
         // Getters
