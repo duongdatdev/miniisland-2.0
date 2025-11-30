@@ -264,39 +264,14 @@ public class Bullet {
     
     /**
      * Kiểm tra va chạm với quái vật trong chế độ Monster Hunt
-     * @return gold earned if monster killed, 0 otherwise
+     * NOTE: This is now handled by PvpMap.checkBulletMonsterCollisions() in the main game loop
+     * to avoid race conditions and ensure proper combo/score tracking.
+     * This method is kept for compatibility but returns 0.
+     * @return always 0 - actual collision is handled by PvpMap
      */
     public int checkMonsterCollision() {
-        if (stop) return 0;
-        
-        GameScene gameScene = GameScene.getInstance();
-        if (!gameScene.getCurrentMap().equals("hunt")) return 0;
-        
-        PvpMap pvpMap = gameScene.getPvpMap();
-        if (!pvpMap.isGameStarted()) return 0;
-        
-        MonsterSpawner spawner = pvpMap.getMonsterSpawner();
-        
-        for (Monster monster : spawner.getMonsters()) {
-            if (!monster.isAlive() || monster.isDying()) continue;
-            
-            if (monster.checkBulletCollision(this)) {
-                stop = true;
-                
-                // Monster nhận damage - takeDamage now returns gold if killed, 0 otherwise
-                int goldEarned = monster.takeDamage(damage);
-                if (goldEarned > 0) {
-                    // Monster died - return gold reward
-                    // Gửi thông báo lên server
-                    Client.getGameClient().sendToServer(
-                        new Protocol().monsterKillPacket(playerShot, monster.getId(), goldEarned)
-                    );
-                    
-                    return goldEarned;
-                }
-                return 0;
-            }
-        }
+        // Collision with monsters is now handled by PvpMap.checkBulletMonsterCollisions()
+        // in the main update loop to properly track combos, damage numbers, and wave kills
         return 0;
     }
 

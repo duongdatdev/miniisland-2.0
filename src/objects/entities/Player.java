@@ -453,7 +453,7 @@ public class Player extends Entity {
         // Heart icon
         g2d.setColor(Color.RED);
         g2d.setFont(new Font("Arial", Font.BOLD, 18));
-        g2d.drawString("♥", barX + barWidth + 10, barY + 16);
+        g2d.drawString("HP", barX + barWidth + 10, barY + 16);
     }
     
     /**

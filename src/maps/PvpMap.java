@@ -317,26 +317,26 @@ public class PvpMap extends Map {
             case SPEED_BOOST:
                 speedMultiplier = type.speedMultiplier;
                 speedBuffTimer = type.duration;
-                showEventMessage("⚡ SPEED BOOST!");
+                showEventMessage("SPEED BOOST!");
                 break;
             case DOUBLE_DAMAGE:
                 damageMultiplier = type.damageMultiplier;
                 damageBuffTimer = type.duration;
-                showEventMessage("⚔ DOUBLE DAMAGE!");
+                showEventMessage("DOUBLE DAMAGE!");
                 break;
             case SHIELD:
                 hasShield = true;
                 shieldTimer = type.duration;
-                showEventMessage("🛡 SHIELD ACTIVATED!");
+                showEventMessage("SHIELD ACTIVATED!");
                 break;
             case GOLD_MAGNET:
                 goldMultiplier = 1.5f;
                 goldBuffTimer = type.duration;
-                showEventMessage("💰 GOLD BONUS!");
+                showEventMessage("GOLD BONUS!");
                 break;
             case HEALTH_PACK:
                 playerHealth = Math.min(playerHealth + 30, maxPlayerHealth);
-                showEventMessage("♥ +30 HP!");
+                showEventMessage("+30 HP!");
                 break;
         }
     }
@@ -449,19 +449,19 @@ public class PvpMap extends Map {
     private void checkKillStreak() {
         switch (totalKills) {
             case 5:
-                showEventMessage("🔥 KILLING SPREE! (5 kills)");
+                showEventMessage("KILLING SPREE! (5 kills)");
                 break;
             case 10:
-                showEventMessage("💀 RAMPAGE! (10 kills)");
+                showEventMessage("RAMPAGE! (10 kills)");
                 break;
             case 15:
-                showEventMessage("⚔ UNSTOPPABLE! (15 kills)");
+                showEventMessage("UNSTOPPABLE! (15 kills)");
                 break;
             case 25:
-                showEventMessage("👑 GODLIKE! (25 kills)");
+                showEventMessage("GODLIKE! (25 kills)");
                 break;
             case 50:
-                showEventMessage("🏆 LEGENDARY! (50 kills)");
+                showEventMessage("LEGENDARY! (50 kills)");
                 break;
         }
     }
@@ -508,7 +508,7 @@ public class PvpMap extends Map {
         comboTimer = 0;
         resetBuffs();
         
-        showEventMessage("💀 You died! Lost " + goldLost + " gold");
+        showEventMessage("You died! Lost " + goldLost + " gold");
         
         // Teleport player to center of playable area
         int centerX = 24 * 48;
@@ -554,7 +554,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ power-ups
+     * Draw power-ups on the map
      */
     private void drawPowerUps(Graphics2D g2d, int tileSize) {
         Player player = gameScene.getPlayer();
@@ -581,7 +581,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ damage numbers (floating damage text)
+     * Draw floating damage numbers
      */
     private void drawDamageNumbers(Graphics2D g2d) {
         Player player = gameScene.getPlayer();
@@ -596,7 +596,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ tất cả quái vật
+     * Draw all monsters on the map
      */
     private void drawMonsters(Graphics2D g2d, int tileSize) {
         Player player = gameScene.getPlayer();
@@ -611,7 +611,7 @@ public class PvpMap extends Map {
             int worldX = monster.getWorldX();
             int worldY = monster.getWorldY();
             
-            // Culling - chỉ vẽ monster trong màn hình
+            // Culling - only draw monsters within screen bounds
             if (Math.abs(worldX - playerWorldX) > playerScreenX + tileSize * 2 ||
                 Math.abs(worldY - playerWorldY) > playerScreenY + tileSize * 2) {
                 continue;
@@ -625,7 +625,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ UI overlay (điểm số, timer, health)
+     * Draw UI overlay (score, timer, health)
      */
     private void drawUI(Graphics2D g2d) {
         // Save original state
@@ -637,39 +637,65 @@ public class PvpMap extends Map {
         
         // === TOP LEFT: Stats Panel ===
         g2d.setColor(new Color(0, 0, 0, 180));
-        g2d.fillRoundRect(10, 10, 180, 120, 10, 10);
+        g2d.fillRoundRect(10, 10, 180, 130, 10, 10);
         g2d.setColor(new Color(80, 80, 80));
-        g2d.drawRoundRect(10, 10, 180, 120, 10, 10);
+        g2d.drawRoundRect(10, 10, 180, 130, 10, 10);
         
         // Gold/Score
         g2d.setFont(new Font("Arial", Font.BOLD, 18));
         g2d.setColor(Color.ORANGE);
-        g2d.drawString("💰 " + localPlayerScore, 20, 35);
+        g2d.drawString("Gold: " + localPlayerScore, 20, 35);
         
-        // Wave
+        // Wave - Prominent display with background highlight
+        int waveNum = monsterSpawner.getWaveNumber();
+        g2d.setColor(new Color(100, 50, 150, 200)); // Purple background
+        g2d.fillRoundRect(15, 40, 90, 24, 8, 8);
+        
+        // Wave border - changes color based on boss wave
+        if (waveNum % 5 == 0) {
+            g2d.setColor(new Color(255, 50, 50)); // Red border for boss wave
+            g2d.setStroke(new BasicStroke(2));
+        } else {
+            g2d.setColor(new Color(255, 215, 0)); // Gold border
+            g2d.setStroke(new BasicStroke(1));
+        }
+        g2d.drawRoundRect(15, 40, 90, 24, 8, 8);
+        
+        // Wave text
+        g2d.setFont(new Font("Arial", Font.BOLD, 16));
+        g2d.setColor(Color.WHITE);
+        String waveText = "WAVE " + waveNum;
+        if (waveNum % 5 == 0) {
+            waveText = "BOSS " + waveNum; // Boss wave indicator
+        }
+        g2d.drawString(waveText, 20, 58);
+        
+        // Wave progress (monsters killed / total)
+        g2d.setFont(new Font("Arial", Font.PLAIN, 10));
+        g2d.setColor(Color.LIGHT_GRAY);
+        String progressText = monsterSpawner.getMonstersKilledInWave() + "/" + monsterSpawner.getMonstersPerWave();
+        g2d.drawString(progressText, 110, 58);
+        
+        // Monsters alive
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        g2d.setColor(Color.YELLOW);
-        g2d.drawString("Wave: " + monsterSpawner.getWaveNumber(), 20, 55);
-        
-        // Monsters
         g2d.setColor(Color.CYAN);
-        g2d.drawString("Monsters: " + monsterSpawner.getMonstersAlive(), 20, 75);
+        g2d.drawString("Monsters: " + monsterSpawner.getMonstersAlive(), 20, 82);
         
         // Kills
         g2d.setColor(Color.WHITE);
-        g2d.drawString("Kills: " + totalKills, 20, 95);
+        g2d.drawString("Kills: " + totalKills, 20, 100);
         
         // Difficulty level
         float currentDifficulty = monsterSpawner.getDifficultyMultiplier();
         if (currentDifficulty > 1.0f) {
             g2d.setColor(new Color(255, 100, 100));
-            g2d.drawString("Diff: x" + String.format("%.1f", currentDifficulty), 100, 55);
+            g2d.drawString("Diff: x" + String.format("%.1f", currentDifficulty), 100, 82);
         }
         
         // Combo (if active)
         if (comboCount > 1) {
             g2d.setColor(new Color(255, 100, 0));
-            g2d.drawString("COMBO x" + comboCount, 20, 115);
+            g2d.drawString("COMBO x" + comboCount, 20, 118);
         }
         
         // === TOP CENTER: Timer + Health ===
@@ -735,7 +761,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ các buffs đang hoạt động
+     * Draw active buff icons
      */
     private void drawActiveBuffs(Graphics2D g2d, int screenWidth) {
         // Count active buffs to center them
@@ -753,30 +779,30 @@ public class PvpMap extends Map {
         
         // Speed buff
         if (speedBuffTimer > 0) {
-            drawBuffIcon(g2d, buffX, buffY, PowerUpType.SPEED_BOOST.color, "⚡", speedBuffTimer);
+            drawBuffIcon(g2d, buffX, buffY, PowerUpType.SPEED_BOOST.color, "SPD", speedBuffTimer);
             buffX += gap;
         }
         
         // Damage buff
         if (damageBuffTimer > 0) {
-            drawBuffIcon(g2d, buffX, buffY, PowerUpType.DOUBLE_DAMAGE.color, "⚔", damageBuffTimer);
+            drawBuffIcon(g2d, buffX, buffY, PowerUpType.DOUBLE_DAMAGE.color, "DMG", damageBuffTimer);
             buffX += gap;
         }
         
         // Shield buff
         if (shieldTimer > 0) {
-            drawBuffIcon(g2d, buffX, buffY, PowerUpType.SHIELD.color, "🛡", shieldTimer);
+            drawBuffIcon(g2d, buffX, buffY, PowerUpType.SHIELD.color, "DEF", shieldTimer);
             buffX += gap;
         }
         
         // Gold buff
         if (goldBuffTimer > 0) {
-            drawBuffIcon(g2d, buffX, buffY, PowerUpType.GOLD_MAGNET.color, "💰", goldBuffTimer);
+            drawBuffIcon(g2d, buffX, buffY, PowerUpType.GOLD_MAGNET.color, "$$$", goldBuffTimer);
         }
     }
     
     /**
-     * Vẽ icon buff
+     * Draw a buff icon with timer
      */
     private void drawBuffIcon(Graphics2D g2d, int x, int y, Color color, String icon, int timer) {
         // Background
@@ -800,7 +826,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ event message
+     * Draw event message overlay
      */
     private void drawEventMessage(Graphics2D g2d, int screenWidth) {
         g2d.setFont(new Font("Arial", Font.BOLD, 28));
@@ -824,7 +850,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ UI cho loại đạn và dash cooldown (bottom left corner, above teleport buttons)
+     * Draw weapon type and dash cooldown UI (bottom left corner, above teleport buttons)
      */
     private void drawWeaponAndDashUI(Graphics2D g2d, int screenWidth) {
         int screenHeight = gameScene.getScreenHeight();
@@ -900,7 +926,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ crosshair cho việc ngắm bắn bằng chuột
+     * Draw crosshair for mouse aiming
      */
     private void drawAimCrosshair(Graphics2D g2d) {
         input.MouseHandler mouse = gameScene.getMouseHandler();
@@ -945,7 +971,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ bảng xếp hạng (top right, below chat button)
+     * Draw leaderboard panel (top right, below chat button)
      */
     private void drawLeaderboard(Graphics2D g2d, int screenWidth) {
         int maxPlayers = Math.min(playerScores.size(), 4); // Show max 4 other players
@@ -963,7 +989,7 @@ public class PvpMap extends Map {
         // Title
         g2d.setFont(new Font("Arial", Font.BOLD, 12));
         g2d.setColor(Color.YELLOW);
-        g2d.drawString("🏆 RANKING", lbX + 10, lbY + 16);
+        g2d.drawString("# RANKING", lbX + 10, lbY + 16);
         
         // Local player (highlighted)
         g2d.setFont(new Font("Arial", Font.BOLD, 11));
@@ -988,7 +1014,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ màn hình game over
+     * Draw game over screen
      */
     private void drawGameOver(Graphics2D g2d, int screenWidth) {
         int screenHeight = gameScene.getScreenHeight();
@@ -1036,7 +1062,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Vẽ màn hình chờ
+     * Draw waiting/start screen
      */
     private void drawWaitingScreen(Graphics2D g2d, int screenWidth) {
         int screenHeight = gameScene.getScreenHeight();
@@ -1048,7 +1074,7 @@ public class PvpMap extends Map {
         // Title
         g2d.setFont(new Font("Arial", Font.BOLD, 36));
         g2d.setColor(Color.YELLOW);
-        String title = "🎯 MONSTER HUNT 🎯";
+        String title = "== MONSTER HUNT ==";
         int textWidth = g2d.getFontMetrics().stringWidth(title);
         g2d.drawString(title, (screenWidth - textWidth) / 2, screenHeight / 2 - 80);
         
@@ -1063,12 +1089,12 @@ public class PvpMap extends Map {
         g2d.setFont(new Font("Arial", Font.PLAIN, 18));
         g2d.setColor(Color.CYAN);
         String[] descriptions = {
-            "🎯 Defeat monsters to earn gold!",
-            "⚡ Collect power-ups for buffs!",
-            "🔥 Build combos for bonus gold!",
-            "🛡 Avoid taking damage to stay alive!",
-            "📈 Monsters get stronger each wave!",
-            "⏱ Time limit: 3 minutes"
+            "> Defeat monsters to earn gold!",
+            "> Collect power-ups for buffs!",
+            "> Build combos for bonus gold!",
+            "> Avoid taking damage to stay alive!",
+            "> Monsters get stronger each wave!",
+            "> Time limit: 3 minutes"
         };
         
         int y = screenHeight / 2 + 20;
@@ -1098,7 +1124,7 @@ public class PvpMap extends Map {
         }
     }
     
-    // Getters và Setters
+    // Getters and Setters
     public MonsterSpawner getMonsterSpawner() {
         return monsterSpawner;
     }

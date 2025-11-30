@@ -134,11 +134,77 @@ public class Monster extends Entity {
         
         for (MonsterType t : MonsterType.values()) {
             BufferedImage[] sprites = new BufferedImage[4];
-            createFallbackSpritesForType(sprites, t);
+            
+            // Try to load from file first
+            if (!loadSpritesFromFile(sprites, t)) {
+                // Fallback to generated sprites if file not found
+                createFallbackSpritesForType(sprites, t);
+            }
+            
             spriteCache.put(t, sprites);
         }
         
         spritesInitialized = true;
+    }
+    
+    /**
+     * Try to load sprites from file
+     * Supports: sprite sheet (192x48) or individual files
+     * @return true if loaded successfully, false otherwise
+     */
+    private static boolean loadSpritesFromFile(BufferedImage[] sprites, MonsterType type) {
+        String typeName = type.name().toLowerCase();
+        
+        try {
+            // Try loading sprite sheet first: /NPC/monsters/slime.png (192x48 with 4 frames)
+            java.io.InputStream is = Monster.class.getResourceAsStream("/NPC/monsters/" + typeName + ".png");
+            if (is != null) {
+                BufferedImage sheet = ImageIO.read(is);
+                is.close();
+                
+                int frameWidth = sheet.getWidth() / 4;
+                int frameHeight = sheet.getHeight();
+                
+                // If it's a sprite sheet (wider than tall)
+                if (sheet.getWidth() >= sheet.getHeight() * 2) {
+                    for (int i = 0; i < 4; i++) {
+                        sprites[i] = sheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
+                    }
+                    System.out.println("Loaded sprite sheet for " + typeName);
+                    return true;
+                } else {
+                    // Single image, use for all frames
+                    for (int i = 0; i < 4; i++) {
+                        sprites[i] = sheet;
+                    }
+                    System.out.println("Loaded single sprite for " + typeName);
+                    return true;
+                }
+            }
+            
+            // Try loading individual frames: /NPC/monsters/slime_1.png, slime_2.png, etc.
+            boolean allLoaded = true;
+            for (int i = 0; i < 4; i++) {
+                is = Monster.class.getResourceAsStream("/NPC/monsters/" + typeName + "_" + (i + 1) + ".png");
+                if (is != null) {
+                    sprites[i] = ImageIO.read(is);
+                    is.close();
+                } else {
+                    allLoaded = false;
+                    break;
+                }
+            }
+            
+            if (allLoaded) {
+                System.out.println("Loaded individual sprites for " + typeName);
+                return true;
+            }
+            
+        } catch (IOException e) {
+            System.err.println("Error loading sprites for " + typeName + ": " + e.getMessage());
+        }
+        
+        return false;
     }
     
     /**
@@ -148,28 +214,217 @@ public class Monster extends Entity {
         return spriteCache.get(type);
     }
     
+    /**
+     * Create fallback sprites when image files are not available
+     * Each monster type has a unique visual design
+     */
     private static void createFallbackSpritesForType(BufferedImage[] sprites, MonsterType type) {
         int size = 48;
-        Color color = getColorForType(type);
         
         for (int i = 0; i < 4; i++) {
             sprites[i] = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = sprites[i].createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             
-            // Draw body
-            g.setColor(color);
-            g.fillOval(4, 8, size - 8, size - 16);
-            
-            // Draw eyes
-            g.setColor(Color.WHITE);
-            g.fillOval(12, 16, 8, 8);
-            g.fillOval(28, 16, 8, 8);
-            
-            g.setColor(Color.BLACK);
-            g.fillOval(14 + (i % 2), 18, 4, 4);
-            g.fillOval(30 + (i % 2), 18, 4, 4);
+            switch (type) {
+                case SLIME:
+                    drawSlime(g, size, i);
+                    break;
+                case GOBLIN:
+                    drawGoblin(g, size, i);
+                    break;
+                case ORC:
+                    drawOrc(g, size, i);
+                    break;
+                case BOSS:
+                    drawBoss(g, size, i);
+                    break;
+            }
             
             g.dispose();
+        }
+    }
+    
+    // === SLIME: Blob xanh lá, nhảy lên xuống ===
+    private static void drawSlime(Graphics2D g, int size, int frame) {
+        int bounce = (frame % 2 == 0) ? 0 : 4; // Animation bounce
+        Color mainColor = new Color(50, 200, 50);
+        Color darkColor = new Color(30, 150, 30);
+        Color lightColor = new Color(100, 255, 100, 150);
+        
+        // Shadow
+        g.setColor(new Color(0, 0, 0, 50));
+        g.fillOval(6, 38 - bounce/2, size - 12, 8);
+        
+        // Body (oval blob)
+        g.setColor(mainColor);
+        g.fillOval(4, 12 + bounce, size - 8, size - 20);
+        
+        // Darker bottom
+        g.setColor(darkColor);
+        g.fillArc(4, 20 + bounce, size - 8, size - 24, 180, 180);
+        
+        // Shine/highlight
+        g.setColor(lightColor);
+        g.fillOval(12, 16 + bounce, 10, 8);
+        
+        // Eyes
+        g.setColor(Color.WHITE);
+        g.fillOval(14, 22 + bounce, 7, 7);
+        g.fillOval(27, 22 + bounce, 7, 7);
+        g.setColor(Color.BLACK);
+        g.fillOval(16 + (frame % 2), 24 + bounce, 3, 3);
+        g.fillOval(29 + (frame % 2), 24 + bounce, 3, 3);
+    }
+    
+    // === GOBLIN: Nhỏ, tai nhọn, mũi dài ===
+    private static void drawGoblin(Graphics2D g, int size, int frame) {
+        int walk = (frame % 2 == 0) ? 0 : 2;
+        Color skinColor = new Color(100, 150, 80);
+        Color darkSkin = new Color(70, 110, 50);
+        Color earColor = new Color(120, 170, 90);
+        
+        // Shadow
+        g.setColor(new Color(0, 0, 0, 50));
+        g.fillOval(10, 40, size - 20, 6);
+        
+        // Ears (pointed)
+        g.setColor(earColor);
+        int[] earLX = {6, 14, 10};
+        int[] earLY = {12, 18, 24};
+        g.fillPolygon(earLX, earLY, 3);
+        int[] earRX = {42, 34, 38};
+        int[] earRY = {12, 18, 24};
+        g.fillPolygon(earRX, earRY, 3);
+        
+        // Head
+        g.setColor(skinColor);
+        g.fillOval(10, 8, 28, 24);
+        
+        // Body
+        g.setColor(darkSkin);
+        g.fillOval(14, 28 + walk, 20, 14);
+        
+        // Eyes (big, yellow)
+        g.setColor(Color.YELLOW);
+        g.fillOval(14, 14, 9, 9);
+        g.fillOval(25, 14, 9, 9);
+        g.setColor(Color.RED);
+        g.fillOval(17 + (frame % 2), 17, 3, 3);
+        g.fillOval(28 + (frame % 2), 17, 3, 3);
+        
+        // Nose (long pointy)
+        g.setColor(darkSkin);
+        int[] noseX = {24, 20, 28};
+        int[] noseY = {30, 22, 22};
+        g.fillPolygon(noseX, noseY, 3);
+    }
+    
+    // === ORC: To, có răng nanh, cơ bắp ===
+    private static void drawOrc(Graphics2D g, int size, int frame) {
+        int walk = (frame % 2 == 0) ? -1 : 1;
+        Color skinColor = new Color(100, 140, 80);
+        Color darkSkin = new Color(70, 100, 50);
+        
+        // Shadow
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillOval(4, 40, size - 8, 8);
+        
+        // Body (muscular)
+        g.setColor(darkSkin);
+        g.fillRoundRect(8, 24 + walk, 32, 18, 8, 8);
+        
+        // Head
+        g.setColor(skinColor);
+        g.fillOval(8, 4, 32, 26);
+        
+        // Jaw
+        g.setColor(darkSkin);
+        g.fillRect(12, 22, 24, 8);
+        
+        // Tusks (teeth)
+        g.setColor(Color.WHITE);
+        int[] tuskLX = {14, 10, 16};
+        int[] tuskLY = {24, 32, 28};
+        g.fillPolygon(tuskLX, tuskLY, 3);
+        int[] tuskRX = {34, 38, 32};
+        int[] tuskRY = {24, 32, 28};
+        g.fillPolygon(tuskRX, tuskRY, 3);
+        
+        // Eyes (small, angry)
+        g.setColor(Color.RED);
+        g.fillOval(14, 12, 8, 6);
+        g.fillOval(26, 12, 8, 6);
+        g.setColor(Color.BLACK);
+        g.fillOval(16 + (frame % 2), 13, 4, 4);
+        g.fillOval(28 + (frame % 2), 13, 4, 4);
+        
+        // Eyebrows (angry)
+        g.setColor(darkSkin);
+        g.setStroke(new BasicStroke(2));
+        g.drawLine(12, 10, 20, 12);
+        g.drawLine(36, 10, 28, 12);
+    }
+    
+    // === BOSS: To gấp đôi, có sừng, aura đỏ ===
+    private static void drawBoss(Graphics2D g, int size, int frame) {
+        int pulse = (frame % 2 == 0) ? 0 : 2;
+        Color skinColor = new Color(80, 40, 40);
+        Color darkSkin = new Color(50, 20, 20);
+        Color auraColor = new Color(255, 50, 50, 100);
+        
+        // Aura effect (pulsing)
+        g.setColor(auraColor);
+        g.fillOval(-2 - pulse, -2 - pulse, size + 4 + pulse*2, size + 4 + pulse*2);
+        
+        // Shadow
+        g.setColor(new Color(0, 0, 0, 80));
+        g.fillOval(2, 40, size - 4, 8);
+        
+        // Horns
+        g.setColor(Color.DARK_GRAY);
+        int[] hornLX = {8, 2, 14};
+        int[] hornLY = {10, -4, 14};
+        g.fillPolygon(hornLX, hornLY, 3);
+        int[] hornRX = {40, 46, 34};
+        int[] hornRY = {10, -4, 14};
+        g.fillPolygon(hornRX, hornRY, 3);
+        
+        // Head
+        g.setColor(skinColor);
+        g.fillOval(4, 6, 40, 30);
+        
+        // Body
+        g.setColor(darkSkin);
+        g.fillRoundRect(6, 30, 36, 14, 8, 8);
+        
+        // Jaw with fangs
+        g.setColor(darkSkin);
+        g.fillRect(10, 28, 28, 10);
+        
+        // Big fangs
+        g.setColor(Color.WHITE);
+        int[] fangLX = {14, 8, 18};
+        int[] fangLY = {30, 42, 34};
+        g.fillPolygon(fangLX, fangLY, 3);
+        int[] fangRX = {34, 40, 30};
+        int[] fangRY = {30, 42, 34};
+        g.fillPolygon(fangRX, fangRY, 3);
+        
+        // Glowing eyes
+        g.setColor(new Color(255, 200, 0)); // Yellow glow
+        g.fillOval(12, 14, 10, 8);
+        g.fillOval(26, 14, 10, 8);
+        g.setColor(Color.RED);
+        g.fillOval(15 + (frame % 2), 16, 4, 4);
+        g.fillOval(29 + (frame % 2), 16, 4, 4);
+        
+        // Crown/spikes on head
+        g.setColor(new Color(150, 50, 50));
+        for (int i = 0; i < 3; i++) {
+            int[] spikeX = {16 + i*8, 20 + i*8, 24 + i*8};
+            int[] spikeY = {8, 0, 8};
+            g.fillPolygon(spikeX, spikeY, 3);
         }
     }
     
@@ -247,8 +502,9 @@ public class Monster extends Entity {
         worldY -= 2;
         
         if (deathAnimTimer >= DEATH_ANIM_DURATION) {
-            isAlive = false;
+            // Animation complete, monster can be removed
             isDying = false;
+            // isAlive is already false from takeDamage()
         }
     }
     
@@ -322,16 +578,24 @@ public class Monster extends Entity {
      * @return gold reward if monster died, 0 otherwise
      */
     public int takeDamage(int damage) {
-        if (!isAlive || isDying) return 0;
+        // Only take damage if alive and not already dying
+        if (!isAlive || isDying) {
+            // System.out.println("[DEBUG] Monster cannot take damage - isAlive: " + isAlive + ", isDying: " + isDying);
+            return 0;
+        }
         
         health -= damage;
         hitFlashTimer = HIT_FLASH_DURATION; // Trigger hit flash
+        
+        // System.out.println("[DEBUG] Monster took " + damage + " damage, health: " + health + "/" + maxHealth);
         
         if (health <= 0) {
             health = 0;
             // Start death animation instead of immediately dying
             isDying = true;
+            isAlive = false; // Mark as not alive immediately to prevent double-counting
             deathAnimTimer = 0;
+            // System.out.println("[DEBUG] Monster KILLED! Gold reward: " + goldReward);
             return goldReward; // Return gold reward
         }
         return 0;
@@ -461,10 +725,29 @@ public class Monster extends Entity {
         
         // Draw difficulty indicator for scaled monsters
         if (difficultyMultiplier > 1.0f) {
+            int level = (int)(difficultyMultiplier * 10 - 9);
+            String lvl = "Lv." + level;
+            
+            // Background for level text
             g2d.setFont(new Font("Arial", Font.BOLD, 10));
-            g2d.setColor(Color.YELLOW);
-            String lvl = "Lv." + (int)(difficultyMultiplier * 10 - 9);
-            g2d.drawString(lvl, screenX, screenY - 2);
+            FontMetrics fm = g2d.getFontMetrics();
+            int lvlWidth = fm.stringWidth(lvl);
+            int lvlX = screenX + (tileSize - lvlWidth) / 2;
+            int lvlY = screenY - 5;
+            
+            // Draw background pill
+            g2d.setColor(new Color(0, 0, 0, 180));
+            g2d.fillRoundRect(lvlX - 4, lvlY - 10, lvlWidth + 8, 14, 7, 7);
+            
+            // Draw level text with color based on level
+            if (level >= 5) {
+                g2d.setColor(Color.RED);
+            } else if (level >= 3) {
+                g2d.setColor(Color.ORANGE);
+            } else {
+                g2d.setColor(Color.YELLOW);
+            }
+            g2d.drawString(lvl, lvlX, lvlY);
         }
     }
     

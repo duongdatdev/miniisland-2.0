@@ -585,7 +585,7 @@ public class MazeMap extends Map {
         // Victory text
         g2d.setFont(new Font("Arial", Font.BOLD, 60));
         g2d.setColor(new Color(255, 215, 0)); // Gold
-        String winText = "🏆 MAZE COMPLETED! 🏆";
+        String winText = "== MAZE COMPLETED! ==";
         FontMetrics fm = g2d.getFontMetrics();
         int textX = (screenWidth - fm.stringWidth(winText)) / 2;
         int textY = screenHeight / 2 - 100;

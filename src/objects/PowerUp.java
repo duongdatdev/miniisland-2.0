@@ -151,11 +151,11 @@ public class PowerUp {
     
     private String getIcon() {
         switch (type) {
-            case SPEED_BOOST: return "⚡";
-            case DOUBLE_DAMAGE: return "⚔";
-            case SHIELD: return "🛡";
-            case GOLD_MAGNET: return "💰";
-            case HEALTH_PACK: return "♥";
+            case SPEED_BOOST: return ">";
+            case DOUBLE_DAMAGE: return "X";
+            case SHIELD: return "O";
+            case GOLD_MAGNET: return "$";
+            case HEALTH_PACK: return "+";
             default: return "?";
         }
     }

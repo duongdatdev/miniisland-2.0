@@ -85,17 +85,17 @@ public class MonsterSpawner {
         // Remove dead monsters (not dying, completely dead)
         monsters.removeIf(m -> !m.isAlive() && !m.isDying());
         
-        // Spawn timer
+        // Check wave transition - transition when killed enough monsters
+        if (monstersKilledInWave >= monstersPerWave) {
+            nextWave();
+            return; // Skip spawning this frame to let new wave initialize
+        }
+        
+        // Spawn timer - only spawn if we haven't killed enough for this wave
         spawnTimer++;
         if (spawnTimer >= spawnInterval && monsters.size() < maxMonsters) {
             spawnMonster();
             spawnTimer = 0;
-        }
-        
-        // Check wave transition - count only completely dead monsters
-        int aliveOrDying = (int) monsters.stream().filter(m -> m.isAlive() || m.isDying()).count();
-        if (monstersKilledInWave >= monstersPerWave && aliveOrDying == 0) {
-            nextWave();
         }
     }
     
@@ -180,17 +180,17 @@ public class MonsterSpawner {
         int roll = random.nextInt(100);
         
         if (waveNumber >= 10) {
-            // Wave 10+: nhiều quái mạnh hơn
+            // Wave 10+: more strong monsters
             if (roll < 20) return MonsterType.SLIME;
             if (roll < 50) return MonsterType.GOBLIN;
             return MonsterType.ORC;
         } else if (waveNumber >= 5) {
-            // Wave 5-9: mix các loại
+            // Wave 5-9: mix of all types
             if (roll < 40) return MonsterType.SLIME;
             if (roll < 80) return MonsterType.GOBLIN;
             return MonsterType.ORC;
         } else {
-            // Wave 1-4: chủ yếu slime
+            // Wave 1-4: mostly slimes
             if (roll < 70) return MonsterType.SLIME;
             return MonsterType.GOBLIN;
         }
@@ -198,10 +198,18 @@ public class MonsterSpawner {
     
     /**
      * Check bullet collision with all monsters
-     * Returns array: [goldReward, damage, monsterWorldX, monsterWorldY] or null
+     * Returns array: [goldReward, damage, monsterWorldX, monsterWorldY, killed] or null
      */
     public int[] checkBulletCollisionDetailed(Bullet bullet, String shooterUsername, int damage) {
-        for (Monster monster : monsters) {
+        if (bullet.isStop()) return null;
+        
+        // Create a copy to avoid ConcurrentModificationException
+        ArrayList<Monster> monstersCopy = new ArrayList<>(monsters);
+        
+        for (Monster monster : monstersCopy) {
+            // Skip dead or dying monsters
+            if (!monster.isAlive() || monster.isDying()) continue;
+            
             if (monster.checkBulletCollision(bullet)) {
                 bullet.setStop(true);
                 
@@ -212,6 +220,7 @@ public class MonsterSpawner {
                 int goldEarned = monster.takeDamage(damage);
                 if (goldEarned > 0) {
                     monstersKilledInWave++;
+                    // System.out.println("[KILL] Monster killed! Wave kills: " + monstersKilledInWave + "/" + monstersPerWave);
                     return new int[] { goldEarned, damage, monsterX, monsterY, 1 }; // 1 = killed
                 }
                 return new int[] { 0, damage, monsterX, monsterY, 0 }; // 0 = hit but not killed

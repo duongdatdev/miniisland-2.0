@@ -670,7 +670,7 @@ public class MazeEnemySpawner {
             // Snowflake symbol
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 16));
-            g2d.drawString("❄", screenX + tileSize/2 - 6, screenY + tileSize - 8);
+            g2d.drawString("*", screenX + tileSize/2 - 6, screenY + tileSize - 8);
         }
         
         private void drawPoisonTrap(Graphics2D g2d, int screenX, int screenY, int tileSize) {

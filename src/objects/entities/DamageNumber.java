@@ -93,7 +93,7 @@ public class DamageNumber {
         // Create text
         String text;
         if (isGold) {
-            text = "+" + damage + " 💰";
+            text = "+" + damage + "G";
         } else {
             text = "-" + damage;
             if (isCritical) {
