@@ -336,35 +336,35 @@ public class MazeMap extends Map {
             String[] lines = map.split("/");
             mapTileCol = lines[0].length();
             mapTileRow = lines.length;
-            System.out.println(mapTileCol + " " + mapTileRow);
+            // System.out.println(mapTileCol + " " + mapTileRow);
             while (col < mapTileCol && row < mapTileRow) {
                 while (col < mapTileCol) {
                     char[] charArray = lines[row].toCharArray();
                     if (charArray[col] == wall) {
                         mapTileNum[col][row] = 0;
-                        System.out.print(mapTileNum[col][row] + " ");
+                        // System.out.print(mapTileNum[col][row] + " ");
                         col++;
                     } else if (charArray[col] == space) {
                         mapTileNum[col][row] = 3;
-                        System.out.print(mapTileNum[col][row] + " ");
+                        // System.out.print(mapTileNum[col][row] + " ");
                         col++;
                     } else if (charArray[col] == star) {
                         mapTileNum[col][row] = 3;
-                        System.out.print(mapTileNum[col][row] + " ");
+                        // System.out.print(mapTileNum[col][row] + " ");
                         col++;
                     } else if (charArray[col] == hole) {
                         mapTileNum[col][row] = 4;
-                        System.out.print(mapTileNum[col][row] + " ");
+                        // System.out.print(mapTileNum[col][row] + " ");
                         col++;
                     } else if (charArray[col] == finishLine) {
                         mapTileNum[col][row] = 2;
-                        System.out.print(mapTileNum[col][row] + " ");
+                        // System.out.print(mapTileNum[col][row] + " ");
                         col++;
                     }
 
                 }
                 if (col == mapTileCol) {
-                    System.out.println("hhh");
+                    // System.out.println("hhh");
                     col = 0;
                     row++;
                 }
@@ -478,7 +478,7 @@ public class MazeMap extends Map {
         
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Arial", Font.BOLD, 12));
-        String hpText = "❤ " + player.getHealth() + "/" + player.getMaxHealth();
+        String hpText = "HP " + player.getHealth() + "/" + player.getMaxHealth();
         g2d.drawString(hpText, healthBarX + 55, healthBarY + 21);
         
         // === TOP CENTER: Timer ===
@@ -496,25 +496,26 @@ public class MazeMap extends Map {
         FontMetrics fm = g2d.getFontMetrics();
         g2d.drawString(timeStr, timerX + (timerW - fm.stringWidth(timeStr)) / 2, 38);
         
-        // === TOP RIGHT: Score Panel ===
+        // === TOP LEFT (Below Health): Score Panel ===
         int scoreW = 130;
-        int scoreX = screenWidth - scoreW - 10;
+        int scoreX = 10;
+        int scoreY = 55; // Below health bar
         
         g2d.setColor(new Color(0, 0, 0, 180));
-        g2d.fillRoundRect(scoreX, 10, scoreW, 75, 10, 10);
+        g2d.fillRoundRect(scoreX, scoreY, scoreW, 75, 10, 10);
         g2d.setColor(new Color(60, 60, 60));
-        g2d.drawRoundRect(scoreX, 10, scoreW, 75, 10, 10);
+        g2d.drawRoundRect(scoreX, scoreY, scoreW, 75, 10, 10);
         
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
         g2d.setColor(Color.YELLOW);
-        g2d.drawString("⭐ " + totalScore, scoreX + 10, 30);
+        g2d.drawString("Score: " + totalScore, scoreX + 10, scoreY + 20);
         
         g2d.setFont(new Font("Arial", Font.PLAIN, 12));
         g2d.setColor(Color.ORANGE);
-        g2d.drawString("🪙 Coins: " + coinsCollected, scoreX + 10, 50);
+        g2d.drawString("Coins: " + coinsCollected, scoreX + 10, scoreY + 40);
         
         g2d.setColor(new Color(255, 100, 100));
-        g2d.drawString("💥 Traps: " + trapHits, scoreX + 10, 70);
+        g2d.drawString("Traps: " + trapHits, scoreX + 10, scoreY + 60);
         
         // === BOTTOM LEFT: Controls Hint (avoid teleport button in center) ===
         g2d.setFont(new Font("Arial", Font.PLAIN, 11));

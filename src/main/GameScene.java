@@ -242,7 +242,7 @@ public class GameScene extends JPanel implements Runnable {
 
         add(leaderBoard);
 
-        chatButton.setBounds(screenWidth - 60, 20, 50, 50);
+        chatButton.setBounds(screenWidth - 70, 20, 60, 35);
 
         topButton.setBounds((screenWidth - 100) / 2, screenHeight - 100, 100, 50);
 
@@ -258,7 +258,7 @@ public class GameScene extends JPanel implements Runnable {
         
         // Shop button and panel
         shopButton = new CustomButton("Shop");
-        shopButton.setBounds(screenWidth - 120, 20, 50, 50);
+        shopButton.setBounds(screenWidth - 140, 20, 60, 35);
         shopButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

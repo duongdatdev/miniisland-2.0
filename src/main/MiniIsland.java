@@ -116,16 +116,100 @@ public class MiniIsland extends JFrame {
     }
 
     private void showDialogExit() {
-        int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to exit ?", "2D Multiplayer Game!", JOptionPane.YES_NO_OPTION);
-
-        if (response == JOptionPane.YES_OPTION) {
+        // Create custom styled dialog
+        JDialog dialog = new JDialog(this, "Mini Island", true);
+        dialog.setUndecorated(true);
+        dialog.setSize(320, 150);
+        dialog.setLocationRelativeTo(this);
+        
+        // Main panel with rounded corners effect
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Background gradient
+                GradientPaint gradient = new GradientPaint(0, 0, new Color(76, 175, 80), 0, getHeight(), new Color(56, 142, 60));
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                
+                // Inner white panel
+                g2d.setColor(new Color(255, 255, 255, 250));
+                g2d.fillRoundRect(5, 40, getWidth() - 10, getHeight() - 45, 15, 15);
+            }
+        };
+        mainPanel.setLayout(null);
+        mainPanel.setPreferredSize(new Dimension(320, 150));
+        
+        // Title label
+        JLabel titleLabel = new JLabel("Mini Island", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setBounds(0, 8, 320, 25);
+        mainPanel.add(titleLabel);
+        
+        // Message label
+        JLabel msgLabel = new JLabel("Are you sure you want to exit?", SwingConstants.CENTER);
+        msgLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        msgLabel.setForeground(new Color(33, 33, 33));
+        msgLabel.setBounds(0, 60, 320, 25);
+        mainPanel.add(msgLabel);
+        
+        // Yes button
+        JButton yesBtn = createStyledButton("Yes", new Color(76, 175, 80));
+        yesBtn.setBounds(70, 100, 80, 35);
+        yesBtn.addActionListener(e -> {
+            dialog.dispose();
             if (clientPlayer != null) {
                 Client.getGameClient().sendToServer(new Protocol().ExitMessagePacket(signInModel.getUsername()));
             }
             System.exit(0);
-        } else {
-            setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        }
+        });
+        mainPanel.add(yesBtn);
+        
+        // No button
+        JButton noBtn = createStyledButton("No", new Color(244, 67, 54));
+        noBtn.setBounds(170, 100, 80, 35);
+        noBtn.addActionListener(e -> dialog.dispose());
+        mainPanel.add(noBtn);
+        
+        dialog.setContentPane(mainPanel);
+        dialog.setShape(new java.awt.geom.RoundRectangle2D.Double(0, 0, 320, 150, 20, 20));
+        dialog.setVisible(true);
+        
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+    }
+    
+    private JButton createStyledButton(String text, Color bgColor) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                if (getModel().isPressed()) {
+                    g2d.setColor(bgColor.darker());
+                } else if (getModel().isRollover()) {
+                    g2d.setColor(bgColor.brighter());
+                } else {
+                    g2d.setColor(bgColor);
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(new Font("Arial", Font.BOLD, 13));
+                FontMetrics fm = g2d.getFontMetrics();
+                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
+                int textY = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2d.drawString(getText(), textX, textY);
+            }
+        };
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return button;
     }
 
     public void actionRegister() {

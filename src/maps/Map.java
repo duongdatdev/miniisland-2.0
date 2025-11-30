@@ -156,7 +156,7 @@ public class Map {
                 
                 // DEBUG: Draw collision tiles overlay
                 // Uncomment to see collision tiles in different colors
-                drawDebugCollisionTiles(g2d, tileNum, screenX, screenY, tileSize);
+                // drawDebugCollisionTiles(g2d, tileNum, screenX, screenY, tileSize);
             }
         }
 
@@ -266,11 +266,11 @@ public class Map {
                 while (col < mapTileCol) {
                     String[] numbers = line.split(",");
                     mapTileNum[col][row] = Integer.parseInt(numbers[col]);
-                    System.out.print(mapTileNum[col][row] + " ");
+                    // System.out.print(mapTileNum[col][row] + " ");
                     col++;
                 }
                 if (col == mapTileCol) {
-                    System.out.println();
+                    // System.out.println();
                     col = 0;
                     row++;
                 }
@@ -321,7 +321,7 @@ public class Map {
                 }
                 row++;
             }
-            System.out.println("Layer 2 loaded successfully!");
+            // System.out.println("Layer 2 loaded successfully!");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
