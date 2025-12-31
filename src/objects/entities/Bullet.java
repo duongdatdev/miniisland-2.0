@@ -1,7 +1,7 @@
 package objects.entities;
 
 import main.GameScene;
-import maps.PvpMap;
+import maps.MonsterHuntMap;
 import network.client.Client;
 import network.client.Protocol;
 import network.entitiesNet.PlayerMP;
@@ -240,25 +240,25 @@ public class Bullet {
     }
 
     public boolean checkCollision() {
-        ArrayList<PlayerMP> clientPlayers = GameScene.getInstance().getMap().players;
-        for (PlayerMP player : clientPlayers) {
-            int x = player.getX();
-            int y = player.getY();
-            if ((yPosi >= y && yPosi <= y + 43) && (xPosi >= x && xPosi <= x + 43)) {
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-
-                GameScene.getInstance().getMap().removePlayer(player.getUsername());
-                if (player.isAlive()) {
-                    Client.getGameClient().sendToServer(new Protocol().bulletCollisionPacket(playerShot, player.getUsername()));
-                }
-                player.setAlive(false);
-                return true;
-            }
-        }
+//        ArrayList<PlayerMP> clientPlayers = GameScene.getInstance().getMap().players;
+//        for (PlayerMP player : clientPlayers) {
+//            int x = player.getX();
+//            int y = player.getY();
+//            if ((yPosi >= y && yPosi <= y + 43) && (xPosi >= x && xPosi <= x + 43)) {
+//                try {
+//                    Thread.sleep(200);
+//                } catch (InterruptedException ex) {
+//                    ex.printStackTrace();
+//                }
+//
+//                GameScene.getInstance().getMap().removePlayer(player.getUsername());
+//                if (player.isAlive()) {
+//                    Client.getGameClient().sendToServer(new Protocol().bulletCollisionPacket(playerShot, player.getUsername()));
+//                }
+//                player.setAlive(false);
+//                return true;
+//            }
+//        }
         return false;
     }
     
@@ -316,7 +316,7 @@ public class Bullet {
                 // Kiểm tra collision với quái trong Monster Hunt mode
                 int goldEarned = checkMonsterCollision();
                 if (goldEarned > 0) {
-                    GameScene.getInstance().getPvpMap().addScore(goldEarned);
+                    GameScene.getInstance().getMonsterHuntMap().addScore(goldEarned);
                     enemiesPierced++;
                     
                     // Stop if not piercing or pierced enough enemies

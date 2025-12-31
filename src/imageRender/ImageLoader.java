@@ -8,11 +8,11 @@ public class ImageLoader {
     public BufferedImage[][] upImages, downImages, leftImages, rightImages, standingImages;
 
     private ImageLoader() {
-        upImages = new BufferedImage[2][];
-        downImages = new BufferedImage[2][];
-        leftImages = new BufferedImage[2][];
-        rightImages = new BufferedImage[2][];
-        standingImages = new BufferedImage[2][];
+        upImages = new BufferedImage[3][];
+        downImages = new BufferedImage[3][];
+        leftImages = new BufferedImage[3][];
+        rightImages = new BufferedImage[3][];
+        standingImages = new BufferedImage[3][];
         loadImage();
     }
 
@@ -36,5 +36,11 @@ public class ImageLoader {
         leftImages[1] = ImageHandler.loadAssets("/player/2/Character_Left.png", tileSize2, tileSize2);
         rightImages[1] = ImageHandler.loadAssets("/player/2/Character_Right.png", tileSize2, tileSize2);
         standingImages[1] = ImageHandler.loadAssets("/player/2/Character_Stand.png", tileSize2, tileSize2);
+
+        upImages[2] = ImageHandler.loadAssets("/player/3/Character_Up.png", tileSize2, tileSize2);
+        downImages[2] = ImageHandler.loadAssets("/player/3/Character_Down.png", tileSize2, tileSize2);
+        leftImages[2] = ImageHandler.loadAssets("/player/3/Character_Left.png", tileSize2, tileSize2);
+        rightImages[2] = ImageHandler.loadAssets("/player/3/Character_Right.png", tileSize2, tileSize2);
+        standingImages[2] = ImageHandler.loadAssets("/player/3/Character_Stand.png", tileSize2, tileSize2);
     }
 }

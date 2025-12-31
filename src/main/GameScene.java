@@ -2,7 +2,7 @@ package main;
 
 import collision.Collision;
 import maps.MazeMap;
-import maps.PvpMap;
+import maps.MonsterHuntMap;
 import network.client.Client;
 import network.client.Protocol;
 import network.entitiesNet.PlayerMP;
@@ -37,7 +37,7 @@ public class GameScene extends JPanel implements Runnable {
 
     //Map
     public String currentMap = "lobby";
-    private PvpMap pvpMap;
+    private MonsterHuntMap monsterHuntMap;
     private Map map;
     private MazeMap mazeMap;
 
@@ -108,7 +108,7 @@ public class GameScene extends JPanel implements Runnable {
 
         //Maps
         map = new Map(this);
-        pvpMap = new PvpMap(this);
+        monsterHuntMap = new MonsterHuntMap(this);
         mazeMap = new MazeMap(this);
 
         //Loading
@@ -170,7 +170,7 @@ public class GameScene extends JPanel implements Runnable {
                         Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
                         
                         // Reset game state - wait for SPACE to start
-                        pvpMap.resetGame();
+                        monsterHuntMap.resetGame();
                         break;
                     case "hunt": // Changed from "pvp" to "hunt"
                         player.setDefaultPosition();
@@ -178,11 +178,11 @@ public class GameScene extends JPanel implements Runnable {
                         currentMap = "lobby";
                         
                         // End Score Battle and send final score with kills
-                        int finalScore = pvpMap.getLocalPlayerScore();
-                        int totalKills = pvpMap.getTotalKills();
+                        int finalScore = monsterHuntMap.getLocalPlayerScore();
+                        int totalKills = monsterHuntMap.getTotalKills();
                         Client.getGameClient().sendToServer(new Protocol().scoreBattleEndPacket(playerMP.getUsername(), finalScore, totalKills));
-                        pvpMap.resetGame();
-                        pvpMap.removeAllPlayers();
+                        monsterHuntMap.resetGame();
+                        monsterHuntMap.removeAllPlayers();
 
                         Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
                         break;
@@ -203,6 +203,7 @@ public class GameScene extends JPanel implements Runnable {
                     case "lobby":
                         changeToLoadingScene();
                         currentMap = "loading";
+                        map.removeAllPlayers(); // Clear lobby players so we don't update them instead of maze players
 
                         Client.getGameClient().sendToServer(new Protocol().enterMazePacket(playerMP.getUsername()));
                         break;
@@ -355,16 +356,27 @@ public class GameScene extends JPanel implements Runnable {
         player.update();
         playerMP.update();
 
+        // Update remote players for interpolation
+        if (getMap() != null && getMap().players != null) {
+            // Use a copy or index loop to avoid ConcurrentModificationException
+            for (int i = 0; i < getMap().players.size(); i++) {
+                PlayerMP p = getMap().players.get(i);
+                if (p != null) {
+                    p.update();
+                }
+            }
+        }
+
         // Update Monster Hunt map game logic if in hunt mode
         if (currentMap.equals("hunt")) {
             // Press SPACE to start/restart game when not started or ended
-            if (!pvpMap.isGameStarted() || pvpMap.isGameEnded()) {
+            if (!monsterHuntMap.isGameStarted() || monsterHuntMap.isGameEnded()) {
                 if (keyHandler.isSpace()) {
-                    pvpMap.startGame();
+                    monsterHuntMap.startGame();
                     Client.getGameClient().sendToServer(new Protocol().startScoreBattlePacket(playerMP.getUsername()));
                 }
             } else {
-                pvpMap.update();
+                monsterHuntMap.update();
             }
         }
         
@@ -422,7 +434,7 @@ public class GameScene extends JPanel implements Runnable {
                     map.draw(g2d, tileSize);
                     break;
                 case "hunt": // Changed from "pvp" to "hunt"
-                    pvpMap.draw(g2d, tileSize);
+                    monsterHuntMap.draw(g2d, tileSize);
                     break;
                 case "maze":
                     mazeMap.draw(g2d, tileSize);
@@ -530,8 +542,8 @@ public class GameScene extends JPanel implements Runnable {
         mazeMap.removeAllPlayers();
         changeToLobby(mazeMap);
 
-        // Send win packet with score to server
-        Client.getGameClient().sendToServer(new Protocol().winMazePacket(playerMP.getUsername()));
+        // Win packet is already sent by MazeMap.handleWin() -> sendScoreToServer()
+        // Client.getGameClient().sendToServer(new Protocol().winMazePacket(playerMP.getUsername()));
     }
 
     public void sendRespawnPacket() {
@@ -606,7 +618,7 @@ public class GameScene extends JPanel implements Runnable {
 
     public Map getMap() {
         return switch (currentMap) {
-            case "hunt" -> pvpMap; // Changed from "pvp" to "hunt"
+            case "hunt" -> monsterHuntMap; // Changed from "pvp" to "hunt"
             case "maze" -> mazeMap;
             default -> map;
         };
@@ -653,7 +665,7 @@ public class GameScene extends JPanel implements Runnable {
     }
 
     public ArrayList<PlayerMP> getPlayers() {
-        return pvpMap.players;
+        return monsterHuntMap.players;
     }
 
     public MazeMap getMazeMap() {
@@ -664,12 +676,12 @@ public class GameScene extends JPanel implements Runnable {
         this.mazeMap = mazeMap;
     }
 
-    public PvpMap getPvpMap() {
-        return pvpMap;
+    public MonsterHuntMap getMonsterHuntMap() {
+        return monsterHuntMap;
     }
 
-    public void setPvpMap(PvpMap pvpMap) {
-        this.pvpMap = pvpMap;
+    public void setMonsterHuntMap(MonsterHuntMap monsterHuntMap) {
+        this.monsterHuntMap = monsterHuntMap;
     }
 
     public boolean isPlayerAlive() {

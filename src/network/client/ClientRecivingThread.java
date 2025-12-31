@@ -1,6 +1,7 @@
 package network.client;
 
 import main.GameScene;
+import maps.MonsterHuntMap;
 import network.entitiesNet.PlayerMP;
 
 import javax.swing.*;
@@ -59,6 +60,7 @@ public class ClientRecivingThread extends Thread {
         }
     }
 
+
     private void handleMessage(String sentence) {
         try {
 
@@ -95,6 +97,12 @@ public class ClientRecivingThread extends Thread {
                     System.out.println("New Client ID= " + id);
                     System.out.println("New Client Username= " + username);
 
+                    PlayerMP player = gameScene.getMap().getPlayer(username);
+                    if (player != null) {
+                        BufferedImage chatImage = player.getDialogText().loadImage("Toi vua vao");
+                        player.setChatImage(chatImage);
+                    }
+
                 } else if (sentence.startsWith("Update")) {
                     String[] parts = sentence.split(",");
 
@@ -118,8 +126,28 @@ public class ClientRecivingThread extends Thread {
                         }
                     }
 
+                } else if (sentence.startsWith("ShotDir")) {
+                    // New format: ShotDir,username,x,y,dirX,dirY
+                    String[] parts = sentence.split(",");
+                    String username = parts[1];
+                    
+                    if (!username.equals(clientPlayer.getUsername())) {
+                        System.out.println("Player " + username + " shot (with direction)");
+                        
+                        if (gameScene.getCurrentMap().equals("hunt")) {
+                            PlayerMP player = gameScene.getMonsterHuntMap().getPlayer(username);
+                            if (player != null) {
+                                int x = Integer.parseInt(parts[2]);
+                                int y = Integer.parseInt(parts[3]);
+                                float dirX = Float.parseFloat(parts[4]);
+                                float dirY = Float.parseFloat(parts[5]);
+                                
+                                player.ShotWithDirection(x, y, dirX, dirY);
+                            }
+                        }
+                    }
                 } else if (sentence.startsWith("Shot")) {
-
+                    // Old format: Shot<username> - kept for backward compatibility
                     String username = sentence.substring(4);
 
                     if (username.equals(clientPlayer.getUsername())) {
@@ -127,41 +155,46 @@ public class ClientRecivingThread extends Thread {
                     } else {
                         System.out.println("Player " + username + " shot");
 
-                        if (gameScene.getCurrentMap().equals("pvp")){
-                                gameScene.getPvpMap().getPlayer(username).Shot();
-                        }
-                    }
-                } else if (sentence.startsWith("BulletCollision")) {
-                    String[] parts = sentence.split(",");
-
-                    String playerShot = parts[1];
-                    String playerHit = parts[2];
-
-                    if (playerHit.equals(clientPlayer.getUsername())) {
-                        int response = JOptionPane.showConfirmDialog(null, "Sorry, You are loss. Do you want to try again ?", "2D Multiplayer Game", JOptionPane.OK_CANCEL_OPTION);
-                        if (response == JOptionPane.OK_OPTION) {
-                            gameScene.setPlayerAlive(true);
-                            gameScene.getPlayer().setWorldX(1000);
-                            gameScene.getPlayer().setWorldY(1000);
-
-                            gameScene.getPlayerMP().setAlive(true);
-                            gameScene.sendRespawnPacket();
-                            gameScene.getPvpMap().removeAllPlayers();
-                            gameScene.sendTeleportPacket(gameScene.getPlayerMP().getUsername(), "pvp", gameScene.getPlayer().getWorldX(), gameScene.getPlayer().getWorldY());
-                        } else {
-                            gameScene.setPlayerAlive(true);
-                            gameScene.getPlayer().setDefaultPosition();
-                            gameScene.sendTeleportPacket(gameScene.getPlayerMP().getUsername(), "lobby", gameScene.getPlayer().getWorldX(), gameScene.getPlayer().getWorldY());
-                            gameScene.changeToLobby(gameScene.getPvpMap());
-                        }
-                    } else {
-                        for (PlayerMP player : gameScene.getMap().players) {
-                            if (player.getUsername().equals(playerHit)) {
-                                gameScene.getMap().removePlayer(playerHit);
-                                break;
+                        if (gameScene.getCurrentMap().equals("hunt")){
+                            PlayerMP player = gameScene.getMonsterHuntMap().getPlayer(username);
+                            if (player != null) {
+                                player.Shot();
                             }
                         }
                     }
+                // === PVP DISABLED - Comment out player-vs-player bullet collision ===
+                // } else if (sentence.startsWith("BulletCollision")) {
+                //     String[] parts = sentence.split(",");
+                //
+                //     String playerShot = parts[1];
+                //     String playerHit = parts[2];
+                //
+                //     if (playerHit.equals(clientPlayer.getUsername())) {
+                //         int response = JOptionPane.showConfirmDialog(null, "Sorry, You are loss. Do you want to try again ?", "2D Multiplayer Game", JOptionPane.OK_CANCEL_OPTION);
+                //         if (response == JOptionPane.OK_OPTION) {
+                //             gameScene.setPlayerAlive(true);
+                //             gameScene.getPlayer().setWorldX(1000);
+                //             gameScene.getPlayer().setWorldY(1000);
+                //
+                //             gameScene.getPlayerMP().setAlive(true);
+                //             gameScene.sendRespawnPacket();
+                //             gameScene.getMonsterHuntMap().removeAllPlayers();
+                //             gameScene.sendTeleportPacket(gameScene.getPlayerMP().getUsername(), "hunt", gameScene.getPlayer().getWorldX(), gameScene.getPlayer().getWorldY());
+                //         } else {
+                //             gameScene.setPlayerAlive(true);
+                //             gameScene.getPlayer().setDefaultPosition();
+                //             gameScene.sendTeleportPacket(gameScene.getPlayerMP().getUsername(), "lobby", gameScene.getPlayer().getWorldX(), gameScene.getPlayer().getWorldY());
+                //             gameScene.changeToLobby(gameScene.getMonsterHuntMap());
+                //         }
+                //     } else {
+                //         for (PlayerMP player : gameScene.getMap().players) {
+                //             if (player.getUsername().equals(playerHit)) {
+                //                 gameScene.getMap().removePlayer(playerHit);
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // === END PVP DISABLED ===
 
                 } else if (sentence.startsWith("Remove")) {
                     int id = Integer.parseInt(sentence.substring(6));
@@ -224,10 +257,11 @@ public class ClientRecivingThread extends Thread {
                     String message = parts[2];
 
                     if (!username.equals(clientPlayer.getUsername())) {
-
-                        BufferedImage chatImage = gameScene.getMap().getPlayer(username).getDialogText().loadImage(message);
-                        gameScene.getMap().getPlayer(username).setChatImage(chatImage);
-
+                        PlayerMP player = gameScene.getMap().getPlayer(username);
+                        if (player != null) {
+                            BufferedImage chatImage = player.getDialogText().loadImage(message);
+                            player.setChatImage(chatImage);
+                        }
                     }
                 } else if (sentence.startsWith("Leaderboard")) {
 
@@ -279,81 +313,98 @@ public class ClientRecivingThread extends Thread {
                     String[] parts = sentence.split(",");
                     int timeLimit = parts.length > 1 ? Integer.parseInt(parts[1]) : 180;
                     
-                    gameScene.getPvpMap().setGameTimeLimit(timeLimit);
-                    gameScene.getPvpMap().startGame();
+                    gameScene.getMonsterHuntMap().setGameTimeLimit(timeLimit);
+                    gameScene.getMonsterHuntMap().startGame();
                     System.out.println("Score Battle started! Time limit: " + timeLimit + "s");
                     
-                } else if (sentence.startsWith("ScoreBattleEnd")) {
-                    // Server thông báo kết thúc game
-                    gameScene.getPvpMap().endGame();
-                    System.out.println("Score Battle ended!");
-                    
-                } else if (sentence.startsWith("ScoreUpdate")) {
-                    // Cập nhật điểm của người chơi khác
+                } else if (sentence.startsWith("HuntWave")) {
                     String[] parts = sentence.split(",");
-                    String username = parts[1];
-                    int score = Integer.parseInt(parts[2]);
+                    int wave = Integer.parseInt(parts[1]);
+                    gameScene.getMonsterHuntMap().getMonsterSpawner().setWaveNumber(wave);
                     
-                    if (!username.equals(clientPlayer.getUsername())) {
-                        gameScene.getPvpMap().updatePlayerScore(username, score);
-                    }
-                    
-                } else if (sentence.startsWith("SpawnMonster")) {
-                    // Server spawn quái mới
-                    String[] parts = sentence.split(",");
-                    int monsterId = Integer.parseInt(parts[1]);
-                    int x = Integer.parseInt(parts[2]);
-                    int y = Integer.parseInt(parts[3]);
-                    String monsterType = parts[4];
-                    
-                    gameScene.getPvpMap().getMonsterSpawner().addMonster(monsterId, x, y, monsterType);
-                    
-                } else if (sentence.startsWith("UpdateMonster")) {
-                    // Server cập nhật vị trí quái
-                    String[] parts = sentence.split(",");
-                    int monsterId = Integer.parseInt(parts[1]);
-                    int x = Integer.parseInt(parts[2]);
-                    int y = Integer.parseInt(parts[3]);
-                    int health = Integer.parseInt(parts[4]);
-                    
-                    gameScene.getPvpMap().getMonsterSpawner().updateMonster(monsterId, x, y, health);
-                    
-                } else if (sentence.startsWith("RemoveMonster")) {
-                    // Server xóa quái
-                    String[] parts = sentence.split(",");
-                    int monsterId = Integer.parseInt(parts[1]);
-                    
-                    gameScene.getPvpMap().getMonsterSpawner().removeMonster(monsterId);
-                    
-                } else if (sentence.startsWith("SyncTime")) {
+                } else if (sentence.startsWith("HuntTime")) {
                     // Server đồng bộ thời gian
                     String[] parts = sentence.split(",");
                     int remainingTime = Integer.parseInt(parts[1]);
                     
-                    gameScene.getPvpMap().setRemainingTime(remainingTime);
+                    // Auto-start game if receiving time sync (means game is already running)
+                    if (!gameScene.getMonsterHuntMap().isGameStarted()) {
+                        gameScene.getMonsterHuntMap().startGame();
+                        System.out.println("Auto-started game due to HuntTime sync");
+                    }
                     
-                } else if (sentence.startsWith("NewWave")) {
-                    // Wave mới bắt đầu
+                    gameScene.getMonsterHuntMap().setRemainingTime(remainingTime);
+                    
+                } else if (sentence.startsWith("HuntEnd")) {
+                    // Server thông báo kết thúc game
+                    gameScene.getMonsterHuntMap().endGame();
+                    System.out.println("Score Battle ended!");
+                    
+                } else if (sentence.startsWith("SpawnMonster")) {
+                    // Server spawn quái mới: SpawnMonster,id,type,x,y
                     String[] parts = sentence.split(",");
-                    int waveNumber = Integer.parseInt(parts[1]);
+                    int monsterId = Integer.parseInt(parts[1]);
+                    int type = Integer.parseInt(parts[2]);
+                    int x = Integer.parseInt(parts[3]);
+                    int y = Integer.parseInt(parts[4]);
                     
-                    System.out.println("Wave " + waveNumber + " started!");
+                    // Convert int type to String type for existing method or update method
+                    String monsterType = "SLIME";
+                    if (type == 1) monsterType = "GOBLIN";
+                    if (type == 2) monsterType = "ORC";
                     
-                } else if (sentence.startsWith("ScoreBattleLeaderboard")) {
-                    // Cập nhật bảng xếp hạng Score Battle
+                    gameScene.getMonsterHuntMap().getMonsterSpawner().addMonster(monsterId, x, y, monsterType);
+                    
+                } else if (sentence.startsWith("MonsterUpdate")) {
+                    // Server cập nhật vị trí/health quái: MonsterUpdate,id,x,y,health
+                    try {
+                        String[] parts = sentence.split(",");
+                        int monsterId = Integer.parseInt(parts[1]);
+                        int x = Integer.parseInt(parts[2]);
+                        int y = Integer.parseInt(parts[3]);
+                        int health = Integer.parseInt(parts[4]);
+                        
+                        if (gameScene.getMonsterHuntMap() != null && 
+                            gameScene.getMonsterHuntMap().getMonsterSpawner() != null) {
+                            gameScene.getMonsterHuntMap().getMonsterSpawner().updateMonster(monsterId, x, y, health);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[MonsterUpdate] Error: " + e.getMessage());
+                    }
+                    
+                } else if (sentence.startsWith("HuntLeaderboard")) {
+                    // Cập nhật bảng xếp hạng Score Battle: HuntLeaderboard,user1:score1,user2:score2...
                     String[] parts = sentence.split(",");
                     
-                    gameScene.getPvpMap().getPlayerScores().clear();
+                    gameScene.getMonsterHuntMap().getPlayerScores().clear();
                     for (int i = 1; i < parts.length; i++) {
                         String[] playerInfo = parts[i].split(":");
                         if (playerInfo.length >= 2) {
                             String username = playerInfo[0];
                             int score = Integer.parseInt(playerInfo[1]);
                             
-                            if (!username.equals(clientPlayer.getUsername())) {
-                                gameScene.getPvpMap().updatePlayerScore(username, score);
+                            gameScene.getMonsterHuntMap().updatePlayerScore(username, score);
+                            
+                            // Sync local player score
+                            if (username.equals(clientPlayer.getUsername())) {
+                                gameScene.getMonsterHuntMap().setLocalPlayerScore(score);
                             }
                         }
+                    }
+                    
+                } else if (sentence.startsWith("MonsterDead")) {
+                    // MonsterDead,monsterId,killerName,points
+                    String[] parts = sentence.split(",");
+                    int monsterId = Integer.parseInt(parts[1]);
+                    String killer = parts[2];
+                    int baseGold = Integer.parseInt(parts[3]);
+                    
+                    // If this client is the killer, process score/combo
+                    if (killer.equals(clientPlayer.getUsername())) {
+                        gameScene.getMonsterHuntMap().handleLocalKill(monsterId, baseGold);
+                    } else {
+                        // Just remove the monster for other players
+                        gameScene.getMonsterHuntMap().getMonsterSpawner().removeMonster(monsterId);
                     }
                     
                 } else if (sentence.startsWith("PlayerDamaged")) {
@@ -364,7 +415,7 @@ public class ClientRecivingThread extends Thread {
                     int remainingHealth = Integer.parseInt(parts[3]);
                     
                     if (username.equals(clientPlayer.getUsername())) {
-                        gameScene.getPvpMap().setPlayerHealth(remainingHealth);
+                        gameScene.getMonsterHuntMap().setPlayerHealth(remainingHealth);
                     }
                 }
                 // ============== Skin Shop Messages ==============
@@ -406,10 +457,16 @@ public class ClientRecivingThread extends Thread {
                         
                         // Đổi skin cho player khác
                         if (!username.equals(clientPlayer.getUsername())) {
-                            // Tìm player trong tất cả các map và đổi skin
-                            PlayerMP targetPlayer = gameScene.getLobbyMap().getPlayer(username);
+                            // PRIORITIZE CURRENT MAP
+                            // Check the current map first to ensure visible players get updated
+                            PlayerMP targetPlayer = gameScene.getMap().getPlayer(username);
+                            
+                            // If not found in current map, check specific maps as fallback
                             if (targetPlayer == null) {
-                                targetPlayer = gameScene.getPvpMap().getPlayer(username);
+                                targetPlayer = gameScene.getLobbyMap().getPlayer(username);
+                            }
+                            if (targetPlayer == null) {
+                                targetPlayer = gameScene.getMonsterHuntMap().getPlayer(username);
                             }
                             if (targetPlayer == null) {
                                 targetPlayer = gameScene.getMazeMap().getPlayer(username);

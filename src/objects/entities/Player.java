@@ -4,6 +4,7 @@ import imageRender.ImageHandler;
 import imageRender.ImageLoader;
 import input.KeyHandler;
 import main.GameScene;
+import maps.MonsterHuntMap;
 import maps.TileType;
 
 import java.awt.*;
@@ -323,7 +324,7 @@ public class Player extends Entity {
         
         // Apply PvP map speed multiplier if available
         if (gameScene != null && gameScene.getCurrentMap().equals("hunt")) {
-            float pvpSpeedMultiplier = gameScene.getPvpMap().getSpeedMultiplier();
+            float pvpSpeedMultiplier = gameScene.getMonsterHuntMap().getSpeedMultiplier();
             if (pvpSpeedMultiplier > 1.0f) {
                 effectiveSpeed = (int)(effectiveSpeed * pvpSpeedMultiplier);
             }

@@ -21,8 +21,13 @@ public class SignUpModel extends AuthMsg {
     public void signUp(Runnable onSuccess) {
 
         try {
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                javax.swing.JOptionPane.showMessageDialog(null, "Please fill in all fields!");
+                return;
+            }
             if (!password.equals(confirmPassword)) {
-                throw new Exception("Passwords do not match");
+                javax.swing.JOptionPane.showMessageDialog(null, "Passwords do not match");
+                return;
             }
             String loginRequest = "Register," + username + "," + confirmPassword + "," + email;
 

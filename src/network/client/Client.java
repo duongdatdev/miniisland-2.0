@@ -22,6 +22,7 @@ public class Client {
     private static Client client;
 
     private Client() throws IOException {
+        loadConfig();
         protocol = new Protocol();
 
         try {
@@ -31,6 +32,20 @@ public class Client {
         } catch (URISyntaxException | InterruptedException ex) {
             JOptionPane.showMessageDialog(null, "Server is not running");
             System.exit(0);
+        }
+    }
+
+    private void loadConfig() {
+        java.util.Properties prop = new java.util.Properties();
+        try (java.io.InputStream input = new java.io.FileInputStream("config.properties")) {
+            prop.load(input);
+            hostName = prop.getProperty("server.ip", "localhost");
+            String portStr = prop.getProperty("server.port", "11111");
+            serverPort = Integer.parseInt(portStr);
+        } catch (IOException | NumberFormatException ex) {
+            System.out.println("Could not load config.properties, using defaults. Error: " + ex.getMessage());
+            hostName = "localhost";
+            serverPort = 11111;
         }
     }
 
@@ -64,6 +79,10 @@ public class Client {
 
     public String getIP() {
         return hostName;
+    }
+
+    public int getPort() {
+        return serverPort;
     }
 
     public static Client getGameClient() {

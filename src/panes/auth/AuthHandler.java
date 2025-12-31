@@ -1,5 +1,7 @@
 package panes.auth;
 
+
+import network.client.Client;
 import network.client.WebSocketGameClient;
 import panes.auth.signIn.SignInModel;
 
@@ -17,7 +19,9 @@ public class AuthHandler extends Thread {
         this.onSuccess = onSuccess;
 
         try {
-            URI serverUri = new URI("ws://localhost:11111");
+            String ip = Client.getGameClient().getIP();
+            int port = Client.getGameClient().getPort();
+            URI serverUri = new URI("ws://" + ip + ":" + port);
             webSocketClient = new WebSocketGameClient(serverUri);
             webSocketClient.connectBlocking();
             
@@ -49,21 +53,21 @@ public class AuthHandler extends Thread {
     private void processResponse(String response) {
         if (response.startsWith("Login")) {
 
-            String[] parts = response.split(",");
+            String[] parts = response.split(",", 3);
 
             String status = parts[1];
             String msg = parts[2];
 
             SignInModel signInModel = SignInModel.getInstance();
             if (status.equals("Success")) {
-                System.out.println("Login Success");
+                // System.out.println("Login Success");
 
                 closeAll();
 
                 SignInModel.getInstance().setSignedIn(true);
 
             } else {
-                System.out.println("Login Failed");
+                // System.out.println("Login Failed");
                 signInModel.setSignedIn(false);
 
                 signInModel.setMsg(msg);
@@ -72,18 +76,18 @@ public class AuthHandler extends Thread {
             }
             isRunning = false;
             onSuccess.run();
-        } else if (response.startsWith("player/1/Register")) {
-            String[] parts = response.split(",");
+        } else if (response.startsWith("Register")) {
+            String[] parts = response.split(",", 3);
 
             String status = parts[1];
             String msg = parts[2];
 
             if (status.equals("Success")) {
-                System.out.println("Register Success");
+                // System.out.println("Register Success");
                 JOptionPane.showMessageDialog(null, msg);
                 closeAll();
             } else {
-                System.out.println("Register Failed");
+                // System.out.println("Register Failed");
                 JOptionPane.showMessageDialog(null, msg);
             }
             isRunning = false;

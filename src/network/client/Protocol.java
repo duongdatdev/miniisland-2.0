@@ -41,6 +41,14 @@ public class Protocol {
         message = "Shot" + username;
         return message;
     }
+    
+    /**
+     * Shot packet with position and direction for accurate bullet display on other clients
+     */
+    public String ShotPacketWithDirection(String username, int x, int y, float dirX, float dirY) {
+        message = "ShotDir," + username + "," + x + "," + y + "," + dirX + "," + dirY;
+        return message;
+    }
 
     public String teleportPacket(String username, String map, int x, int y) {
         message = "TeleportToMap," + username + "," + map + "," + x + "," + y;
@@ -97,6 +105,19 @@ public class Protocol {
      */
     public String scoreUpdatePacket(String username, int score) {
         message = "ScoreUpdate," + username + "," + score;
+        return message;
+    }
+    
+    public String monsterDeadPacket(int monsterId, String killer, int points) {
+        message = "MonsterDead," + monsterId + "," + killer + "," + points;
+        return message;
+    }
+    
+    /**
+     * Gửi thông báo quái bị bắn trúng lên server để xử lý damage
+     */
+    public String monsterHitPacket(int monsterId, int damage, String shooterUsername) {
+        message = "MonsterHit," + monsterId + "," + damage + "," + shooterUsername;
         return message;
     }
     

@@ -63,6 +63,10 @@ public class SignInModel extends AuthMsg {
     }
 
     public void signIn(String username, String password, Runnable onSuccess) {
+        if (username.isEmpty() || password.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(null, "Please fill in all fields!");
+            return;
+        }
         try {
             String loginRequest = "Login," + username + "," + password;
 

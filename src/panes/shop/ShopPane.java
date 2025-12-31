@@ -221,9 +221,24 @@ public class ShopPane extends JPanel {
         if (parts.length >= 2) {
             currentSkinFolder = parts[1];
             
+            // Update local skins list
+            boolean changed = false;
+            for (PlayerSkin skin : mySkins) {
+                boolean wasEquipped = skin.isEquipped;
+                skin.isEquipped = skin.skinFolder.equals(currentSkinFolder);
+                if (wasEquipped != skin.isEquipped) {
+                    changed = true;
+                }
+            }
+            
             // Notify listener
             if (skinChangeListener != null) {
                 SwingUtilities.invokeLater(() -> skinChangeListener.onSkinChanged(currentSkinFolder));
+            }
+            
+            // Refresh UI if needed
+            if (changed) {
+                SwingUtilities.invokeLater(this::updateMySkinsPanel);
             }
         }
     }

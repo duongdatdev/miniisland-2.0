@@ -18,12 +18,12 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 /**
- * PvpMap - Chế độ Monster Hunt (Săn quái kiếm điểm)
+ * MonsterHuntMap - Chế độ Monster Hunt (Săn quái kiếm điểm)
  * Nhiều người chơi cùng xuất hiện trong một bản đồ top-down.
  * Người chơi bắn quái để nhận vàng trong thời gian giới hạn.
  * Quái có thể di chuyển và tấn công người chơi.
  */
-public class PvpMap extends Map {
+public class MonsterHuntMap extends Map {
     private int startX;
     private int startY;
 
@@ -82,7 +82,7 @@ public class PvpMap extends Map {
     // === NEW: Damage Numbers ===
     private ArrayList<DamageNumber> damageNumbers;
 
-    public PvpMap(GameScene gameScene) {
+    public MonsterHuntMap(GameScene gameScene) {
         super(gameScene);
         mapTileCol = 50;
         mapTileRow = 50;
@@ -209,22 +209,22 @@ public class PvpMap extends Map {
         
         Player player = gameScene.getPlayer();
         
-        // Update timer
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastTimeUpdate >= 1000) {
-            remainingTime--;
-            lastTimeUpdate = currentTime;
-            
-            // Increase difficulty over time
-            if (remainingTime % 30 == 0 && remainingTime > 0) {
-                difficultyMultiplier += 0.1f;
-            }
-            
-            if (remainingTime <= 0) {
-                endGame();
-                return;
-            }
-        }
+        // HANDLED BY SERVER
+        // long currentTime = System.currentTimeMillis();
+        // if (currentTime - lastTimeUpdate >= 1000) {
+        //     remainingTime--;
+        //     lastTimeUpdate = currentTime;
+        //     
+        //     // Increase difficulty over time
+        //     if (remainingTime % 30 == 0 && remainingTime > 0) {
+        //         difficultyMultiplier += 0.1f;
+        //     }
+        //     
+        //     if (remainingTime <= 0) {
+        //         endGame();
+        //         return;
+        //     }
+        // }
         
         // Update combo timer
         if (comboTimer > 0) {
@@ -266,6 +266,26 @@ public class PvpMap extends Map {
             dmgNum.update();
         }
         damageNumbers.removeIf(DamageNumber::shouldRemove);
+    }
+
+    public void setRemainingTime(int time) {
+        this.remainingTime = time;
+    }
+
+    public void updatePlayerScore(String username, int score) {
+        playerScores.put(username, score);
+    }
+
+    public HashMap<String, Integer> getPlayerScores() {
+        return playerScores;
+    }
+
+    public MonsterSpawner getMonsterSpawner() {
+        return monsterSpawner;
+    }
+
+    public void setPlayerHealth(int health) {
+        this.playerHealth = health;
     }
     
     /**
@@ -389,7 +409,7 @@ public class PvpMap extends Map {
     }
     
     /**
-     * Kiểm tra va chạm đạn với quái và tạo damage numbers
+     * Kiểm tra va chạm đạn với quái - gửi hit event lên server để xử lý
      */
     private void checkBulletMonsterCollisions() {
         String username = gameScene.getPlayerMP().getUsername();
@@ -400,43 +420,21 @@ public class PvpMap extends Map {
         // Check bullets from local player
         for (Bullet bullet : gameScene.getPlayerMP().getBullets()) {
             if (bullet != null && !bullet.isStop()) {
-                // Use detailed collision check
-                int[] result = monsterSpawner.checkBulletCollisionDetailed(bullet, username, bulletDamage);
-                
-                if (result != null) {
-                    int goldEarned = result[0];
-                    int damage = result[1];
-                    int monsterX = result[2];
-                    int monsterY = result[3];
-                    boolean killed = result[4] == 1;
-                    
-                    // Create damage number
-                    boolean isCritical = damageMultiplier > 1.0f; // Critical if has damage buff
-                    damageNumbers.add(new DamageNumber(monsterX + 24, monsterY, damage, isCritical));
-                    
-                    if (killed) {
-                        // Monster was killed
-                        comboCount++;
-                        comboTimer = COMBO_TIMEOUT;
-                        maxCombo = Math.max(maxCombo, comboCount);
+                // Check collision with each monster
+                for (Monster monster : monsterSpawner.getMonsters()) {
+                    if (monster.isAlive() && !monster.isDying() && monster.checkBulletCollision(bullet)) {
+                        bullet.setStop(true);
                         
-                        // Calculate final gold with multipliers
-                        float comboBonus = 1.0f + (comboCount * 0.1f); // +10% per combo
-                        int finalGold = (int) (goldEarned * goldMultiplier * comboBonus);
-                        
-                        // Create gold number
-                        damageNumbers.add(new DamageNumber(monsterX + 24, monsterY - 20, finalGold));
-                        
-                        addScore(finalGold);
-                        totalKills++;
-                        
-                        // Check for kill streak events
-                        checkKillStreak();
-                        
-                        // Send score update to server
+                        // Send hit to server for authoritative damage processing
                         Client.getGameClient().sendToServer(
-                            new Protocol().scoreUpdatePacket(username, localPlayerScore)
+                            new Protocol().monsterHitPacket(monster.getId(), bulletDamage, username)
                         );
+                        
+                        // Show damage number locally for instant feedback
+                        boolean isCritical = damageMultiplier > 1.0f;
+                        damageNumbers.add(new DamageNumber(monster.getWorldX() + 24, monster.getWorldY(), bulletDamage, isCritical));
+                        
+                        break; // Bullet can only hit one monster
                     }
                 }
             }
@@ -530,11 +528,53 @@ public class PvpMap extends Map {
     }
     
     /**
+     * Xử lý khi quái chết và người chơi này là kẻ giết
+     * Được gọi khi nhận MonsterDead packet từ server
+     */
+    public void handleLocalKill(int monsterId, int baseGold) {
+        Monster monster = monsterSpawner.getMonster(monsterId);
+        
+        // Get monster position for effects before removing
+        int mx = monster != null ? monster.getWorldX() : 0;
+        int my = monster != null ? monster.getWorldY() : 0;
+        
+        // Update combo
+        comboCount++;
+        comboTimer = COMBO_TIMEOUT;
+        maxCombo = Math.max(maxCombo, comboCount);
+        
+        // Calculate final gold with multipliers
+        float comboBonus = 1.0f + (comboCount * 0.1f); // +10% per combo
+        int finalGold = (int) (baseGold * goldMultiplier * comboBonus);
+        
+        // Show gold number
+        if (monster != null) {
+            damageNumbers.add(new DamageNumber(mx + 24, my - 20, finalGold));
+        }
+        
+        // Add score
+        localPlayerScore += finalGold;
+        totalKills++;
+        
+        // Check kill streak
+        checkKillStreak();
+        
+        // Remove monster
+        monsterSpawner.removeMonster(monsterId);
+        
+        // Send score update to server for leaderboard
+        String username = gameScene.getPlayerMP().getUsername();
+        Client.getGameClient().sendToServer(
+            new Protocol().scoreUpdatePacket(username, localPlayerScore)
+        );
+    }
+    
+    /**
      * Cập nhật điểm của người chơi khác
      */
-    public void updatePlayerScore(String username, int score) {
-        playerScores.put(username, score);
-    }
+    // public void updatePlayerScore(String username, int score) {
+    //     playerScores.put(username, score);
+    // }
 
     @Override
     public void draw(Graphics2D g2d, int tileSize) {
@@ -974,42 +1014,99 @@ public class PvpMap extends Map {
      * Draw leaderboard panel (top right, below chat button)
      */
     private void drawLeaderboard(Graphics2D g2d, int screenWidth) {
-        int maxPlayers = Math.min(playerScores.size(), 4); // Show max 4 other players
-        int lbWidth = 150;
-        int lbHeight = 28 + maxPlayers * 18 + 22; // Compact spacing
-        int lbX = screenWidth - lbWidth - 10;
-        int lbY = 80; // Below chat button which is at y=20, height=50
+        // Collect all players including local player for proper ranking
+        java.util.TreeMap<Integer, java.util.List<String>> sortedScores = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
         
-        // Background
-        g2d.setColor(new Color(0, 0, 0, 180));
-        g2d.fillRoundRect(lbX, lbY, lbWidth, lbHeight, 10, 10);
-        g2d.setColor(new Color(80, 80, 80));
-        g2d.drawRoundRect(lbX, lbY, lbWidth, lbHeight, 10, 10);
-        
-        // Title
-        g2d.setFont(new Font("Arial", Font.BOLD, 12));
-        g2d.setColor(Color.YELLOW);
-        g2d.drawString("# RANKING", lbX + 10, lbY + 16);
-        
-        // Local player (highlighted)
-        g2d.setFont(new Font("Arial", Font.BOLD, 11));
-        g2d.setColor(Color.GREEN);
+        // Add local player
         String localName = gameScene.getPlayerMP().getUsername();
-        if (localName.length() > 10) localName = localName.substring(0, 10);
-        g2d.drawString("▶ " + localName + ": " + localPlayerScore, lbX + 8, lbY + 34);
+        sortedScores.computeIfAbsent(localPlayerScore, k -> new java.util.ArrayList<>()).add(localName);
         
-        // Other players
-        g2d.setFont(new Font("Arial", Font.PLAIN, 10));
-        g2d.setColor(Color.LIGHT_GRAY);
-        int yOffset = 50;
-        int count = 0;
-        for (Entry<String, Integer> entry : playerScores.entrySet()) {
-            if (count >= maxPlayers) break;
+        // Add other players (avoid duplicates)
+        for (java.util.Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            if (!entry.getKey().equals(localName)) {
+                sortedScores.computeIfAbsent(entry.getValue(), k -> new java.util.ArrayList<>()).add(entry.getKey());
+            }
+        }
+        
+        // Flatten to list of entries for display
+        java.util.List<java.util.AbstractMap.SimpleEntry<String, Integer>> rankedPlayers = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<Integer, java.util.List<String>> entry : sortedScores.entrySet()) {
+            for (String name : entry.getValue()) {
+                rankedPlayers.add(new java.util.AbstractMap.SimpleEntry<>(name, entry.getKey()));
+            }
+        }
+        
+        int maxPlayers = Math.min(rankedPlayers.size(), 5);
+        int lbWidth = 180;
+        int lbHeight = 35 + maxPlayers * 24;
+        int lbX = screenWidth - lbWidth - 10;
+        int lbY = 80;
+        
+        // Gradient background
+        GradientPaint gradient = new GradientPaint(lbX, lbY, new Color(30, 30, 50, 220), 
+                                                    lbX, lbY + lbHeight, new Color(20, 20, 35, 220));
+        g2d.setPaint(gradient);
+        g2d.fillRoundRect(lbX, lbY, lbWidth, lbHeight, 12, 12);
+        
+        // Golden border
+        g2d.setColor(new Color(180, 150, 50));
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRoundRect(lbX, lbY, lbWidth, lbHeight, 12, 12);
+        g2d.setStroke(new BasicStroke(1));
+        
+        // Title with trophy icon
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        g2d.setColor(new Color(255, 215, 0)); // Gold color
+        g2d.drawString("🏆 RANKING", lbX + 12, lbY + 20);
+        
+        // Divider line
+        g2d.setColor(new Color(100, 100, 120));
+        g2d.drawLine(lbX + 10, lbY + 28, lbX + lbWidth - 10, lbY + 28);
+        
+        // Draw players with rank
+        int yOffset = 48;
+        for (int i = 0; i < maxPlayers; i++) {
+            java.util.AbstractMap.SimpleEntry<String, Integer> entry = rankedPlayers.get(i);
             String name = entry.getKey();
-            if (name.length() > 10) name = name.substring(0, 10);
-            g2d.drawString("  " + name + ": " + entry.getValue(), lbX + 8, lbY + yOffset);
-            yOffset += 18;
-            count++;
+            int score = entry.getValue();
+            boolean isLocal = name.equals(localName);
+            
+            // Truncate name
+            if (name.length() > 12) name = name.substring(0, 12) + "..";
+            
+            // Rank medal/number
+            String rankIcon;
+            Color rankColor;
+            switch (i) {
+                case 0: rankIcon = "🥇"; rankColor = new Color(255, 215, 0); break;   // Gold
+                case 1: rankIcon = "🥈"; rankColor = new Color(192, 192, 192); break; // Silver
+                case 2: rankIcon = "🥉"; rankColor = new Color(205, 127, 50); break;  // Bronze
+                default: rankIcon = (i + 1) + "."; rankColor = new Color(150, 150, 170); break;
+            }
+            
+            // Highlight local player row
+            if (isLocal) {
+                g2d.setColor(new Color(0, 100, 50, 80));
+                g2d.fillRoundRect(lbX + 5, lbY + yOffset - 14, lbWidth - 10, 20, 5, 5);
+            }
+            
+            // Draw rank
+            g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            g2d.setColor(rankColor);
+            g2d.drawString(rankIcon, lbX + 10, lbY + yOffset);
+            
+            // Draw name
+            g2d.setFont(new Font("Arial", isLocal ? Font.BOLD : Font.PLAIN, 11));
+            g2d.setColor(isLocal ? Color.GREEN : Color.WHITE);
+            g2d.drawString(name, lbX + 35, lbY + yOffset);
+            
+            // Draw score (right-aligned)
+            String scoreStr = String.valueOf(score);
+            int scoreWidth = g2d.getFontMetrics().stringWidth(scoreStr);
+            g2d.setColor(isLocal ? new Color(100, 255, 100) : new Color(255, 230, 150));
+            g2d.drawString(scoreStr, lbX + lbWidth - scoreWidth - 12, lbY + yOffset);
+            
+            yOffset += 24;
         }
     }
     
@@ -1125,9 +1222,9 @@ public class PvpMap extends Map {
     }
     
     // Getters and Setters
-    public MonsterSpawner getMonsterSpawner() {
-        return monsterSpawner;
-    }
+    // public MonsterSpawner getMonsterSpawner() {
+    //     return monsterSpawner;
+    // }
     
     public int getLocalPlayerScore() {
         return localPlayerScore;
@@ -1141,9 +1238,9 @@ public class PvpMap extends Map {
         return remainingTime;
     }
     
-    public void setRemainingTime(int time) {
-        this.remainingTime = time;
-    }
+    // public void setRemainingTime(int time) {
+    //     this.remainingTime = time;
+    // }
     
     public boolean isGameStarted() {
         return gameStarted;
@@ -1168,17 +1265,17 @@ public class PvpMap extends Map {
         return playerHealth;
     }
     
-    public void setPlayerHealth(int health) {
-        this.playerHealth = health;
-    }
+    // public void setPlayerHealth(int health) {
+    //     this.playerHealth = health;
+    // }
     
     public int getMaxPlayerHealth() {
         return maxPlayerHealth;
     }
     
-    public HashMap<String, Integer> getPlayerScores() {
-        return playerScores;
-    }
+    // public HashMap<String, Integer> getPlayerScores() {
+    //     return playerScores;
+    // }
     
     public int getGameTimeLimit() {
         return gameTimeLimit;

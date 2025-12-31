@@ -47,18 +47,20 @@ public class MonsterSpawner {
     
     /**
      * Start the spawner
+     * NOTE: In multiplayer mode, monsters are managed by server.
+     * We don't clear the monster list here because server may have already sent monsters.
      */
     public void start() {
         isActive = true;
         waveNumber = 1;
         monstersKilledInWave = 0;
         spawnTimer = 0;
-        monsters.clear();
-        nextMonsterId = 0;
+        // Don't clear monsters - server manages spawning/despawning
+        // monsters.clear();
         difficultyMultiplier = 1.0f; // Reset difficulty
         
-        // Spawn first wave
-        spawnWave();
+        // Spawn first wave - DISABLED for multiplayer sync
+        // spawnWave();
     }
     
     /**
@@ -86,16 +88,46 @@ public class MonsterSpawner {
         monsters.removeIf(m -> !m.isAlive() && !m.isDying());
         
         // Check wave transition - transition when killed enough monsters
-        if (monstersKilledInWave >= monstersPerWave) {
-            nextWave();
-            return; // Skip spawning this frame to let new wave initialize
-        }
+        // if (monstersKilledInWave >= monstersPerWave) {
+        //     nextWave();
+        //     return; // Skip spawning this frame to let new wave initialize
+        // }
         
-        // Spawn timer - only spawn if we haven't killed enough for this wave
-        spawnTimer++;
-        if (spawnTimer >= spawnInterval && monsters.size() < maxMonsters) {
-            spawnMonster();
-            spawnTimer = 0;
+        // Spawn timer - NOW HANDLED BY SERVER
+        // spawnTimer++;
+        // if (spawnTimer >= spawnInterval && monsters.size() < maxMonsters) {
+        //     spawnMonster();
+        //     spawnTimer = 0;
+        // }
+    }
+
+    public void addMonster(int id, int x, int y, String type) {
+        MonsterType mType = MonsterType.SLIME;
+        if (type.equals("GOBLIN")) mType = MonsterType.GOBLIN;
+        if (type.equals("ORC")) mType = MonsterType.ORC;
+        if (type.equals("BOSS")) mType = MonsterType.BOSS;
+        
+        // Use the constructor that takes ID
+        Monster monster = new Monster(id, x, y, mType);
+        monsters.add(monster);
+    }
+
+    public void removeMonster(int id) {
+        monsters.removeIf(m -> m.getId() == id);
+    }
+    
+    public void updateMonster(int id, int x, int y, int health) {
+        for (Monster m : monsters) {
+            if (m.getId() == id) {
+                // Debug: Check if position is actually changing
+                if (m.getWorldX() != x || m.getWorldY() != y) {
+                    System.out.println("[MonsterSync] Monster #" + id + " moved: (" + m.getWorldX() + "," + m.getWorldY() + ") -> (" + x + "," + y + ")");
+                }
+                m.setWorldX(x);
+                m.setWorldY(y);
+                m.setHealth(health); 
+                break;
+            }
         }
     }
     
@@ -221,9 +253,9 @@ public class MonsterSpawner {
                 if (goldEarned > 0) {
                     monstersKilledInWave++;
                     // System.out.println("[KILL] Monster killed! Wave kills: " + monstersKilledInWave + "/" + monstersPerWave);
-                    return new int[] { goldEarned, damage, monsterX, monsterY, 1 }; // 1 = killed
+                    return new int[] { goldEarned, damage, monsterX, monsterY, 1, monster.getId() }; // 1 = killed
                 }
-                return new int[] { 0, damage, monsterX, monsterY, 0 }; // 0 = hit but not killed
+                return new int[] { 0, damage, monsterX, monsterY, 0, monster.getId() }; // 0 = hit but not killed
             }
         }
         return null;
@@ -265,42 +297,6 @@ public class MonsterSpawner {
         return null;
     }
     
-    /**
-     * Add monster from server
-     */
-    public void addMonster(int id, int x, int y, String typeStr) {
-        MonsterType type;
-        try {
-            type = MonsterType.valueOf(typeStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            type = MonsterType.SLIME;
-        }
-        
-        Monster monster = new Monster(id, x, y, type);
-        // Set map bounds for this monster
-        monster.setMapBounds(mapMinX, mapMaxX, mapMinY, mapMaxY);
-        monsters.add(monster);
-    }
-    
-    /**
-     * Remove monster by ID
-     */
-    public void removeMonster(int id) {
-        monsters.removeIf(m -> m.getId() == id);
-    }
-    
-    /**
-     * Update monster position from server
-     */
-    public void updateMonster(int id, int x, int y, int health) {
-        Monster monster = getMonster(id);
-        if (monster != null) {
-            monster.setWorldX(x);
-            monster.setWorldY(y);
-            monster.setHealth(health);
-        }
-    }
-    
     // Getters
     public ArrayList<Monster> getMonsters() {
         return monsters;
@@ -308,6 +304,10 @@ public class MonsterSpawner {
     
     public int getWaveNumber() {
         return waveNumber;
+    }
+
+    public void setWaveNumber(int waveNumber) {
+        this.waveNumber = waveNumber;
     }
     
     public boolean isActive() {

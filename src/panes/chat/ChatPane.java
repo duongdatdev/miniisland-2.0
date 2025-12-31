@@ -148,6 +148,9 @@ public class ChatPane extends JPanel implements ActionListener {
     
     private void sendMessage() {
         String message = chatField.getText().trim();
+        if(message.isEmpty()){
+            System.err.println("Vui ");
+        }
         if (!message.isEmpty()) {
             // Load the chat bubble image
             playerMP.setChatImage(playerMP.getDialogText().loadImage(message));

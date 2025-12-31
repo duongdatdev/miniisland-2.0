@@ -50,7 +50,6 @@ public class Map {
             throw new RuntimeException(e);
         }
 
-//        npcs[0] = pvpNPC;
         npcs[0] = topNPC;
         npcs[1] = mazeNPC;
 
@@ -444,14 +443,6 @@ public class Map {
         this.topNPC = topNPC;
     }
 
-    public NPC getPvpNPC() {
-        return monsterHuntNPC;
-    }
-
-    public void setPvpNPC(NPC pvpNPC) {
-        this.monsterHuntNPC = pvpNPC;
-    }
-    
     public NPC getMonsterHuntNPC() {
         return monsterHuntNPC;
     }

@@ -63,6 +63,9 @@ public class Monster extends Entity {
     private int hitFlashTimer = 0;
     private static final int HIT_FLASH_DURATION = 6;
     
+    // Network sync - when true, position is controlled by server updates
+    private boolean networkControlled = true;
+    
     public enum MonsterType {
         SLIME(30, 5, 10, 2, 100), // health, damage, goldReward, speed, attackRange
         GOBLIN(50, 10, 25, 3, 80),
@@ -245,7 +248,7 @@ public class Monster extends Entity {
         }
     }
     
-    // === SLIME: Blob xanh lá, nhảy lên xuống ===
+    //Slime
     private static void drawSlime(Graphics2D g, int size, int frame) {
         int bounce = (frame % 2 == 0) ? 0 : 4; // Animation bounce
         Color mainColor = new Color(50, 200, 50);
@@ -460,16 +463,21 @@ public class Monster extends Entity {
             hitFlashTimer--;
         }
         
-        // Animation update
+        // Animation update (always runs)
         animationCounter++;
         if (animationCounter >= ANIMATION_SPEED) {
             spriteIndex = (spriteIndex + 1) % 4;
             animationCounter = 0;
         }
         
-        // Attack cooldown
+        // Attack cooldown (always runs)
         if (attackTimer > 0) {
             attackTimer--;
+        }
+        
+        // Skip movement AI if controlled by network (server handles movement)
+        if (networkControlled) {
+            return;
         }
         
         // Move towards player if within vision range
@@ -852,5 +860,20 @@ public class Monster extends Entity {
         this.health = this.maxHealth;
         this.damage = (int)(type.damage * multiplier);
         this.goldReward = (int)(type.goldReward * (1 + (multiplier - 1) * 0.5f));
+    }
+    
+    /**
+     * Check if monster position is controlled by network (server)
+     */
+    public boolean isNetworkControlled() {
+        return networkControlled;
+    }
+    
+    /**
+     * Set network controlled mode
+     * @param controlled true if position updates come from server
+     */
+    public void setNetworkControlled(boolean controlled) {
+        this.networkControlled = controlled;
     }
 }

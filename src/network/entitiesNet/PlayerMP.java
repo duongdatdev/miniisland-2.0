@@ -2,6 +2,7 @@ package network.entitiesNet;
 
 import input.MouseHandler;
 import main.GameScene;
+import maps.MonsterHuntMap;
 import network.client.Client;
 import network.client.Protocol;
 import objects.entities.Bullet;
@@ -49,6 +50,7 @@ public class PlayerMP {
     private boolean isAlive = true;
 
     public PlayerMP(Player player) {
+        this.isLocalPlayer = true;
         this.player = player;
         this.x = player.getWorldX();
         this.y = player.getWorldY();
@@ -62,8 +64,13 @@ public class PlayerMP {
     }
 
     public PlayerMP(String username, int x, int y, int direction, int id) {
+        this.isLocalPlayer = false;
         this.x = x;
         this.y = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.smoothX = x;
+        this.smoothY = y;
         this.id = id;
         this.direction = direction;
         this.username = username;
@@ -79,49 +86,83 @@ public class PlayerMP {
 
     //Counter for the number of times the player has moved
     int count = 1;
+    private long lastUpdateTime = 0;
+    private final long UPDATE_INTERVAL = 50; // 20 updates per second
+
+    // Interpolation variables
+    private boolean isLocalPlayer = false;
+    private float smoothX, smoothY;
+    private int targetX, targetY;
 
     /**
      * Updates the player's position and direction
      */
     public void update() {
-        if (player.getWorldX() != x || player.getWorldY() != y || player.getId() != id) {
-            player.setId(id);
-            x = player.getWorldX();
-            y = player.getWorldY();
-        }
-        if (player.isMove() && !player.isCollision()) {
-            x = player.getWorldX();
-            y = player.getWorldY();
-            switch (player.getDirection()) {
-                case "DOWN" -> direction = 1;
-                case "UP" -> direction = 2;
-                case "LEFT" -> direction = 3;
-                case "RIGHT" -> direction = 4;
+        if (isLocalPlayer) {
+            if (player.getWorldX() != x || player.getWorldY() != y || player.getId() != id) {
+                player.setId(id);
+                x = player.getWorldX();
+                y = player.getWorldY();
             }
-            updatePlayerInServer();
-
-            count = 1;
-        } else {
-            if (count == 1) {
-                if (player.getDirection().equals("STAND")) {
-                    lastDirection = direction;
-                    direction = 0;
+            if (player.isMove() && !player.isCollision()) {
+                x = player.getWorldX();
+                y = player.getWorldY();
+                switch (player.getDirection()) {
+                    case "DOWN" -> direction = 1;
+                    case "UP" -> direction = 2;
+                    case "LEFT" -> direction = 3;
+                    case "RIGHT" -> direction = 4;
                 }
-                updatePlayerInServer();
+                updatePlayerInServer(false);
 
-                count = 0;
+                count = 1;
+            } else {
+                if (count == 1) {
+                    if (player.getDirection().equals("STAND")) {
+                        lastDirection = direction;
+                        direction = 0;
+                    }
+                    updatePlayerInServer(true);
+
+                    count = 0;
+                }
             }
-        }
 
-        player.setWorldX(x);
-        player.setWorldY(y);
-        player.setId(id);
-        switch (direction) {
-            case 1 -> player.setDirection("DOWN");
-            case 2 -> player.setDirection("UP");
-            case 3 -> player.setDirection("LEFT");
-            case 4 -> player.setDirection("RIGHT");
-            default -> player.setDirection("STAND");
+            player.setWorldX(x);
+            player.setWorldY(y);
+            player.setId(id);
+            switch (direction) {
+                case 1 -> player.setDirection("DOWN");
+                case 2 -> player.setDirection("UP");
+                case 3 -> player.setDirection("LEFT");
+                case 4 -> player.setDirection("RIGHT");
+                default -> player.setDirection("STAND");
+            }
+        } else {
+            // Interpolation for remote players
+            float smoothing = 0.2f;
+            smoothX += (targetX - smoothX) * smoothing;
+            smoothY += (targetY - smoothY) * smoothing;
+
+            // Snap if close enough
+            if (Math.abs(targetX - smoothX) < 1) smoothX = targetX;
+            if (Math.abs(targetY - smoothY) < 1) smoothY = targetY;
+            
+            // Teleport if too far
+            if (Math.abs(targetX - smoothX) > 100) smoothX = targetX;
+            if (Math.abs(targetY - smoothY) > 100) smoothY = targetY;
+
+            player.setWorldX((int)smoothX);
+            player.setWorldY((int)smoothY);
+            
+            // Update direction for animation
+            switch (direction) {
+                case 1 -> player.setDirection("DOWN");
+                case 2 -> player.setDirection("UP");
+                case 3 -> player.setDirection("LEFT");
+                case 4 -> player.setDirection("RIGHT");
+                default -> player.setDirection("STAND");
+            }
         }
     }
 
@@ -130,8 +171,16 @@ public class PlayerMP {
         y = player.getWorldY();
     }
 
+    public void updatePlayerInServer(boolean force) {
+        long currentTime = System.currentTimeMillis();
+        if (force || currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
+            Client.getGameClient().sendToServer(new Protocol().UpdatePacket(username, x, y, direction));
+            lastUpdateTime = currentTime;
+        }
+    }
+
     public void updatePlayerInServer() {
-        Client.getGameClient().sendToServer(new Protocol().UpdatePacket(username, x, y, direction));
+        updatePlayerInServer(true);
     }
 
     public void render(Graphics2D g2d, int tileSize) {
@@ -177,30 +226,47 @@ public class PlayerMP {
                     MouseHandler mouse = gs.getMouseHandler();
                     
                     Bullet newBullet;
+                    float dirX = 0, dirY = 1; // Default direction (down)
                     
                     // Use mouse aiming if enabled and in PvP
                     if (useMouseAiming && mouse != null) {
+                        dirX = mouse.getAimDirectionX();
+                        dirY = mouse.getAimDirectionY();
                         // Create bullet with mouse direction
                         newBullet = new Bullet(
                             this.getX(), this.getY(),
-                            mouse.getAimDirectionX(), mouse.getAimDirectionY(),
+                            dirX, dirY,
                             username, currentBulletType
                         );
                     } else {
                         // Fallback to keyboard direction
                         int bombDirection = getShootDirection();
                         newBullet = new Bullet(this.getX(), this.getY(), bombDirection, username, currentBulletType);
+                        // Convert direction to dirX, dirY for network
+                        switch (bombDirection) {
+                            case 1: dirX = 0; dirY = 1; break;  // Down
+                            case 2: dirX = 0; dirY = -1; break; // Up
+                            case 3: dirX = -1; dirY = 0; break; // Left
+                            case 4: dirX = 1; dirY = 0; break;  // Right
+                            case 5: dirX = -0.707f; dirY = -0.707f; break; // Up-Left
+                            case 6: dirX = 0.707f; dirY = -0.707f; break;  // Up-Right
+                            case 7: dirX = -0.707f; dirY = 0.707f; break;  // Down-Left
+                            case 8: dirX = 0.707f; dirY = 0.707f; break;   // Down-Right
+                        }
                     }
                     
                     // Apply damage multiplier from PvP map if available
-                    if (gs.getPvpMap() != null && gs.getPvpMap().getDamageMultiplier() > 1.0f) {
-                        newBullet.setDamage((int)(newBullet.getDamage() * gs.getPvpMap().getDamageMultiplier()));
+                    if (gs.getMonsterHuntMap() != null && gs.getMonsterHuntMap().getDamageMultiplier() > 1.0f) {
+                        newBullet.setDamage((int)(newBullet.getDamage() * gs.getMonsterHuntMap().getDamageMultiplier()));
                     }
                     
                     newBullet.startBombThread(true);
                     bullets.add(newBullet);
                     
-                    Client.getGameClient().sendToServer(new Protocol().ShotPacket(username));
+                    // Send shot with direction info
+                    Client.getGameClient().sendToServer(
+                        new Protocol().ShotPacketWithDirection(username, this.getX(), this.getY(), dirX, dirY)
+                    );
                 }
             }
             lastShotTime = currentTime;
@@ -318,6 +384,20 @@ public class PlayerMP {
             bullets.add(newBullet);
         }
     }
+    
+    /**
+     * Shot with specific position and direction (for network sync from other players)
+     */
+    public void ShotWithDirection(int x, int y, float dirX, float dirY) {
+        // Clean up stopped bullets
+        bullets.removeIf(b -> b.stop);
+        
+        if (bullets.size() < MAX_BULLETS) {
+            Bullet newBullet = new Bullet(x, y, dirX, dirY, username, Bullet.BulletType.NORMAL);
+            newBullet.startBombThread(false);
+            bullets.add(newBullet);
+        }
+    }
 
     public int getDirection() {
         switch (player.getDirection()) {
@@ -372,8 +452,13 @@ public class PlayerMP {
     }
 
     public void setX(int x) {
-        player.setWorldX(x);
-        this.x = x;
+        if (isLocalPlayer) {
+            player.setWorldX(x);
+            this.x = x;
+        } else {
+            this.targetX = x;
+            this.x = x;
+        }
     }
 
     public int getY() {
@@ -382,8 +467,13 @@ public class PlayerMP {
     }
 
     public void setY(int y) {
-        player.setWorldY(y);
-        this.y = y;
+        if (isLocalPlayer) {
+            player.setWorldY(y);
+            this.y = y;
+        } else {
+            this.targetY = y;
+            this.y = y;
+        }
     }
 
     public int getID() {
