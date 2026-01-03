@@ -23,7 +23,8 @@ public class Map {
     protected int mapTileCol = 70;
     protected int mapTileRow = 50;
 
-    public ArrayList<PlayerMP> players;
+    // Use CopyOnWriteArrayList to prevent ConcurrentModificationException during rendering
+    public java.util.concurrent.CopyOnWriteArrayList<PlayerMP> players;
     public PlayerMP player;
 
     private Entity[] npcs;
@@ -35,7 +36,7 @@ public class Map {
 
     public Map(GameScene gameScene) {
         this.gameScene = gameScene;
-        players = new ArrayList<PlayerMP>();
+        players = new java.util.concurrent.CopyOnWriteArrayList<PlayerMP>();
         npcs = new Entity[2];
         mapTileNum = new int[mapTileCol][mapTileRow];
         mapTileNumLayer2 = new int[mapTileCol][mapTileRow]; // Initialize layer 2
@@ -59,6 +60,41 @@ public class Map {
         loadMap("/Maps/tileSet.png");
         readMap("/Maps/map_1.csv");
         readMapLayer2("/Maps/map_1_Layer 2.csv"); // Read layer 2
+    }
+
+    public void addPlayer(PlayerMP player) {
+        // Prevent duplicates: Remove existing player with same username if present
+        for (PlayerMP p : players) {
+            if (p.getUsername().equals(player.getUsername())) {
+                players.remove(p);
+                break;
+            }
+        }
+        players.add(player);
+        System.out.println("Map: Added player " + player.getUsername() + " (Total: " + players.size() + ")");
+    }
+
+    public PlayerMP getPlayer(String username) {
+        for (PlayerMP mp : players) {
+            if (mp != null && mp.getUsername().equals(username)) {
+                return mp;
+            }
+        }
+        return null;
+    }
+
+    public void removePlayer(String username) {
+        for (PlayerMP mp : players) {
+            if (mp.getUsername().equals(username)) {
+                players.remove(mp);
+                System.out.println("Player " + mp.getUsername() + " has left the lobby.");
+                break;
+            }
+        }
+    }
+
+    public void removeAllPlayers() {
+        players.clear();
     }
 
     public void setHitBox() {
@@ -152,10 +188,6 @@ public class Map {
                 int screenY = worldY - playerWorldY + playerScreenY;
                 
                 g2d.drawImage(tiles[tileNum].getImage(), screenX, screenY, tileSize, tileSize, null);
-                
-                // DEBUG: Draw collision tiles overlay
-                // Uncomment to see collision tiles in different colors
-                // drawDebugCollisionTiles(g2d, tileNum, screenX, screenY, tileSize);
             }
         }
 
@@ -166,15 +198,24 @@ public class Map {
         g2d.setFont(usernameFont);
         FontMetrics fm = g2d.getFontMetrics(usernameFont);
         
+        // DEBUG: Print player count and positions periodically
+        // if (gameScene.getFps() % 60 == 0 && render) {
+        //      System.out.println("Map Draw: " + players.size() + " players. Local POS: " + playerWorldX + "," + playerWorldY);
+        // }
+
         for (PlayerMP playerMP : players) {
             if (playerMP == null) continue;
             
             int worldX = playerMP.getX();
             int worldY = playerMP.getY();
             
-            // Quick bounds check
-            if (Math.abs(worldX - playerWorldX) > playerScreenX + tileSize * 2 ||
-                Math.abs(worldY - playerWorldY) > playerScreenY + tileSize * 2) {
+            // if (gameScene.getFps() % 60 == 0 && render) {
+            //      System.out.println(" - Render Player: " + playerMP.getUsername() + " at " + worldX + "," + worldY);
+            // }
+
+            // Quick bounds check - Expanded slightly to ensure not culled prematurely
+            if (Math.abs(worldX - playerWorldX) > playerScreenX + tileSize * 4 ||
+                Math.abs(worldY - playerWorldY) > playerScreenY + tileSize * 4) {
                 continue;
             }
 
@@ -332,36 +373,7 @@ public class Map {
         }
     }
 
-    public void addPlayer(PlayerMP player) {
-        players.add(player);
-    }
 
-    public PlayerMP getPlayer(String username) {
-        try {
-            for (PlayerMP mp : players) {
-                if (mp != null && mp.getUsername().equals(username)) {
-                    return mp;
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Player not found");
-        }
-        return null;
-    }
-
-    public void removePlayer(String username) {
-        for (PlayerMP mp : players) {
-            if (mp.getUsername().equals(username)) {
-                System.out.println("Player " + mp.getUsername() + " has left the lobby.");
-                players.remove(mp);
-                break;
-            }
-        }
-    }
-
-    public void removeAllPlayers() {
-        players.clear();
-    }
 
     public Tile[] getTiles() {
         return tiles;

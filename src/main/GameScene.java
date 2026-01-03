@@ -66,7 +66,8 @@ public class GameScene extends JPanel implements Runnable {
 
     //Network
     private PlayerMP playerMP;
-    private ArrayList<PlayerMP> players;
+    // Use CopyOnWriteArrayList for thread safety
+    private java.util.concurrent.CopyOnWriteArrayList<PlayerMP> players;
 
     //Leaderboard
     private LeaderBoard leaderBoard;
@@ -398,6 +399,9 @@ public class GameScene extends JPanel implements Runnable {
                     map.getMazeNPC().setWorldY(1075);
                     mazeMap.removeAllPlayers();
                     changeToLobby(mazeMap);
+                    
+                    // Send teleport packet to server so it knows we left the maze
+                    Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), currentMap, player.getWorldX(), player.getWorldY()));
                 }
             }
         }
@@ -564,6 +568,9 @@ public class GameScene extends JPanel implements Runnable {
 
         // Win packet is already sent by MazeMap.handleWin() -> sendScoreToServer()
         // Client.getGameClient().sendToServer(new Protocol().winMazePacket(playerMP.getUsername()));
+        
+        // Force server to send us the lobby player list now that we have actually switched maps locally
+        Client.getGameClient().sendToServer(new Protocol().teleportPacket(playerMP.getUsername(), "lobby", player.getWorldX(), player.getWorldY()));
     }
 
     public void sendRespawnPacket() {
@@ -684,7 +691,7 @@ public class GameScene extends JPanel implements Runnable {
         this.currentMap = currentMap;
     }
 
-    public ArrayList<PlayerMP> getPlayers() {
+    public java.util.concurrent.CopyOnWriteArrayList<PlayerMP> getPlayers() {
         return monsterHuntMap.players;
     }
 

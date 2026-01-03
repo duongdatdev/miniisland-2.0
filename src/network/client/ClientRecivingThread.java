@@ -90,18 +90,25 @@ public class ClientRecivingThread extends Thread {
                     String map = sentence.substring(pos5 + 1, sentence.length());
 
                     if (!username.equals(gameScene.getPlayerMP().getUsername())) {
-                        if (gameScene.getCurrentMap().equals(map))
-                            gameScene.registerNewPlayer(new PlayerMP(username, x, y, dir, id));
+                        // FIX: Add player to the SPECIFIED map, not just the current map
+                        // This fixes the issue where lobby players sent while client is in Maze Win screen were incorrectly added to Maze Map (or ignored)
+                        if (map.equals("lobby")) {
+                            gameScene.getLobbyMap().addPlayer(new PlayerMP(username, x, y, dir, id));
+                        } else if (map.equals("maze")) {
+                            gameScene.getMazeMap().addPlayer(new PlayerMP(username, x, y, dir, id));
+                        } else if (map.equals("hunt")) {
+                            gameScene.getMonsterHuntMap().addPlayer(new PlayerMP(username, x, y, dir, id));
+                        }
                     }
 
                     System.out.println("New Client ID= " + id);
                     System.out.println("New Client Username= " + username);
 
                     PlayerMP player = gameScene.getMap().getPlayer(username);
-                    if (player != null) {
-                        BufferedImage chatImage = player.getDialogText().loadImage("Toi vua vao");
-                        player.setChatImage(chatImage);
-                    }
+//                    if (player != null) {
+//                        BufferedImage chatImage = player.getDialogText().loadImage("Toi vua vao");
+//                        player.setChatImage(chatImage);
+//                    }
 
                 } else if (sentence.startsWith("Update")) {
                     String[] parts = sentence.split(",");
@@ -112,7 +119,19 @@ public class ClientRecivingThread extends Thread {
                     int dir = Integer.parseInt(parts[4]);
 
                     if (!username.equals(clientPlayer.getUsername())) {
+                        // PRIORITIZE CURRENT MAP
                         PlayerMP player = gameScene.getMap().getPlayer(username);
+
+                        // Fallback: Check other maps if not found (e.g. while looking at Maze Win screen)
+                        if (player == null) {
+                            player = gameScene.getLobbyMap().getPlayer(username);
+                        }
+                        if (player == null) {
+                            player = gameScene.getMonsterHuntMap().getPlayer(username);
+                        }
+                        if (player == null) {
+                            player = gameScene.getMazeMap().getPlayer(username);
+                        }
 
                         if (player != null) {
                             player.setX(x);
@@ -122,7 +141,8 @@ public class ClientRecivingThread extends Thread {
                             }
                             player.setDirection(dir);
                         } else {
-                            System.out.println("Player with username " + username + " not found in the map.");
+                            // Only print if really not found anywhere, to avoid spam
+                            // System.out.println("Player " + username + " not found in any map.");
                         }
                     }
 
@@ -134,16 +154,18 @@ public class ClientRecivingThread extends Thread {
                     if (!username.equals(clientPlayer.getUsername())) {
                         System.out.println("Player " + username + " shot (with direction)");
                         
-                        if (gameScene.getCurrentMap().equals("hunt")) {
-                            PlayerMP player = gameScene.getMonsterHuntMap().getPlayer(username);
-                            if (player != null) {
+                        // Check all maps for shooter (similar to update) because bullets might be visible/needed
+                        PlayerMP player = gameScene.getMap().getPlayer(username);
+                        if (player == null) player = gameScene.getLobbyMap().getPlayer(username);
+                        if (player == null) player = gameScene.getMonsterHuntMap().getPlayer(username);
+                        
+                        if (player != null) {
                                 int x = Integer.parseInt(parts[2]);
                                 int y = Integer.parseInt(parts[3]);
                                 float dirX = Float.parseFloat(parts[4]);
                                 float dirY = Float.parseFloat(parts[5]);
                                 
                                 player.ShotWithDirection(x, y, dirX, dirY);
-                            }
                         }
                     }
                 } else if (sentence.startsWith("Shot")) {
@@ -313,7 +335,7 @@ public class ClientRecivingThread extends Thread {
                 }
                 // ============== Score Battle Mode Messages ==============
                 else if (sentence.startsWith("ScoreBattleStart")) {
-                    // Server thông báo bắt đầu game
+                    // Server announces game start
                     String[] parts = sentence.split(",");
                     int timeLimit = parts.length > 1 ? Integer.parseInt(parts[1]) : 180;
                     
@@ -327,7 +349,7 @@ public class ClientRecivingThread extends Thread {
                     gameScene.getMonsterHuntMap().getMonsterSpawner().setWaveNumber(wave);
                     
                 } else if (sentence.startsWith("HuntTime")) {
-                    // Server đồng bộ thời gian
+                    // Server syncs time
                     String[] parts = sentence.split(",");
                     int remainingTime = Integer.parseInt(parts[1]);
                     
@@ -340,12 +362,12 @@ public class ClientRecivingThread extends Thread {
                     gameScene.getMonsterHuntMap().setRemainingTime(remainingTime);
                     
                 } else if (sentence.startsWith("HuntEnd")) {
-                    // Server thông báo kết thúc game
+                    // Server announces game end
                     gameScene.getMonsterHuntMap().endGame();
                     System.out.println("Score Battle ended!");
                     
                 } else if (sentence.startsWith("SpawnMonster")) {
-                    // Server spawn quái mới: SpawnMonster,id,type,x,y
+                    // Server spawns new monster: SpawnMonster,id,type,x,y
                     String[] parts = sentence.split(",");
                     int monsterId = Integer.parseInt(parts[1]);
                     int type = Integer.parseInt(parts[2]);
@@ -360,7 +382,7 @@ public class ClientRecivingThread extends Thread {
                     gameScene.getMonsterHuntMap().getMonsterSpawner().addMonster(monsterId, x, y, monsterType);
                     
                 } else if (sentence.startsWith("MonsterUpdate")) {
-                    // Server cập nhật vị trí/health quái: MonsterUpdate,id,x,y,health
+                    // Server updates monster position/health: MonsterUpdate,id,x,y,health
                     try {
                         String[] parts = sentence.split(",");
                         int monsterId = Integer.parseInt(parts[1]);
@@ -377,7 +399,7 @@ public class ClientRecivingThread extends Thread {
                     }
                     
                 } else if (sentence.startsWith("HuntLeaderboard")) {
-                    // Cập nhật bảng xếp hạng Score Battle: HuntLeaderboard,user1:score1,user2:score2...
+                    // Update Score Battle leaderboard: HuntLeaderboard,user1:score1,user2:score2...
                     String[] parts = sentence.split(",");
                     
                     gameScene.getMonsterHuntMap().getPlayerScores().clear();
@@ -412,7 +434,7 @@ public class ClientRecivingThread extends Thread {
                     }
                     
                 } else if (sentence.startsWith("PlayerDamaged")) {
-                    // Thông báo người chơi bị damage
+                    // Notification player damaged
                     String[] parts = sentence.split(",");
                     String username = parts[1];
                     int damage = Integer.parseInt(parts[2]);
@@ -444,7 +466,7 @@ public class ClientRecivingThread extends Thread {
                     String[] parts = sentence.split(",");
                     if (parts.length >= 2) {
                         String skinFolder = parts[1];
-                        // Đổi skin cho chính player này
+                        // Change skin for this player
                         gameScene.getPlayer().changeSkin(skinFolder);
                         System.out.println("Loaded equipped skin: " + skinFolder);
                     }
@@ -453,13 +475,13 @@ public class ClientRecivingThread extends Thread {
                         gameScene.getShopPane().parseEquippedSkin(sentence);
                     }
                 } else if (sentence.startsWith("ChangeSkin")) {
-                    // Player khác đổi skin: ChangeSkin,username,skinFolder
+                    // Other player changed skin: ChangeSkin,username,skinFolder
                     String[] parts = sentence.split(",");
                     if (parts.length >= 3) {
                         String username = parts[1];
                         String skinFolder = parts[2];
                         
-                        // Đổi skin cho player khác
+                        // Change skin for other player
                         if (!username.equals(clientPlayer.getUsername())) {
                             // PRIORITIZE CURRENT MAP
                             // Check the current map first to ensure visible players get updated
@@ -481,7 +503,7 @@ public class ClientRecivingThread extends Thread {
                                 System.out.println("Changed skin for " + username + " to folder " + skinFolder);
                             }
                         } else {
-                            // Đổi skin cho chính mình
+                            // Change skin for self
                             gameScene.getPlayer().changeSkin(skinFolder);
                         }
                     }

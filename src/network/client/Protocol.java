@@ -93,7 +93,7 @@ public class Protocol {
     // ============== Score Battle Mode Protocols ==============
     
     /**
-     * Gửi yêu cầu bắt đầu game Score Battle
+     * Send request to start Score Battle game
      */
     public String startScoreBattlePacket(String username) {
         message = "StartScoreBattle," + username;
@@ -101,7 +101,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi cập nhật điểm số của người chơi
+     * Send player point update
      */
     public String scoreUpdatePacket(String username, int score) {
         message = "ScoreUpdate," + username + "," + score;
@@ -114,7 +114,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo quái bị bắn trúng lên server để xử lý damage
+     * Send notification that monster was hit to server to handle damage
      */
     public String monsterHitPacket(int monsterId, int damage, String shooterUsername) {
         message = "MonsterHit," + monsterId + "," + damage + "," + shooterUsername;
@@ -122,7 +122,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo tiêu diệt quái
+     * Send notification of monster kill
      */
     public String monsterKillPacket(String username, int monsterId, int goldEarned) {
         message = "MonsterKill," + username + "," + monsterId + "," + goldEarned;
@@ -130,7 +130,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo người chơi bị quái tấn công
+     * Send notification that player was damaged
      */
     public String playerDamagedPacket(String username, int damage, int remainingHealth) {
         message = "PlayerDamaged," + username + "," + damage + "," + remainingHealth;
@@ -138,7 +138,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi yêu cầu cập nhật bảng xếp hạng Score Battle
+     * Send request to update Score Battle leaderboard
      */
     public String scoreBattleLeaderboardPacket() {
         message = "ScoreBattleLeaderboard";
@@ -146,7 +146,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo game kết thúc với điểm và kills để cập nhật leaderboard
+     * Send game end notification with score and kills to update leaderboard
      */
     public String scoreBattleEndPacket(String username, int finalScore, int kills) {
         message = "ScoreBattleEnd," + username + "," + finalScore + "," + kills;
@@ -154,7 +154,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi điểm maze khi kết thúc game
+     * Send maze points when game ends
      */
     public String mazeEndPacket(String username, int score, int coinsCollected, boolean won) {
         message = "MazeEnd," + username + "," + score + "," + coinsCollected + "," + (won ? "1" : "0");
@@ -162,7 +162,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo spawn quái từ server
+     * Send notification of monster spawn from server
      */
     public String spawnMonsterPacket(int monsterId, int x, int y, String monsterType) {
         message = "SpawnMonster," + monsterId + "," + x + "," + y + "," + monsterType;
@@ -170,7 +170,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo cập nhật vị trí quái
+     * Send notification of monster position update
      */
     public String updateMonsterPacket(int monsterId, int x, int y, int health) {
         message = "UpdateMonster," + monsterId + "," + x + "," + y + "," + health;
@@ -178,7 +178,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo xóa quái
+     * Send notification of monster removal
      */
     public String removeMonsterPacket(int monsterId) {
         message = "RemoveMonster," + monsterId;
@@ -186,7 +186,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo đồng bộ thời gian còn lại
+     * Send time sync notification
      */
     public String syncTimePacket(int remainingTime) {
         message = "SyncTime," + remainingTime;
@@ -194,7 +194,7 @@ public class Protocol {
     }
     
     /**
-     * Gửi thông báo wave mới bắt đầu
+     * Send new wave notification
      */
     public String newWavePacket(int waveNumber) {
         message = "NewWave," + waveNumber;
@@ -204,28 +204,28 @@ public class Protocol {
     // ============== Skin Shop Protocols ==============
     
     /**
-     * Lấy danh sách skins trong shop
+     * Get list of skins in shop
      */
     public String getSkinsPacket() {
         return "Shop,GetSkins";
     }
     
     /**
-     * Lấy coins
+     * Get coins
      */
     public String getCoinsPacket() {
         return "Shop,GetCoins";
     }
     
     /**
-     * Mua skin
+     * Buy skin
      */
     public String buySkinPacket(int skinId) {
         return "Shop,Buy," + skinId;
     }
     
     /**
-     * Lấy skins đã sở hữu
+     * Get owned skins
      */
     public String getMySkinsPacket() {
         return "Shop,GetMySkins";
@@ -239,7 +239,7 @@ public class Protocol {
     }
     
     /**
-     * Lấy skin đang equip
+     * Get equipped skin
      */
     public String getEquippedSkinPacket() {
         return "Shop,GetEquipped";
