@@ -232,6 +232,10 @@ public class ClientRecivingThread extends Thread {
                         gameScene.getMap().removePlayer(username);
 
                     }
+                } else if (sentence.startsWith("MazeWin")) {
+                    String[] parts = sentence.split(",");
+                    String username = parts[1];
+                    gameScene.showSystemMessage("Player " + username + " has won the Maze!");
                 } else if (sentence.startsWith("TeleportMap")) {
 
                     String[] parts = sentence.split(",");

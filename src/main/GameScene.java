@@ -82,6 +82,10 @@ public class GameScene extends JPanel implements Runnable {
     //Chat
     private ChatPane chatPanel;
 
+    //System Message
+    private String systemMessage = "";
+    private long systemMessageTime = 0;
+
     private static GameScene instance;
 
     public static GameScene getInstance() {
@@ -469,6 +473,22 @@ public class GameScene extends JPanel implements Runnable {
             }
 
         }
+
+        if (systemMessageTime > System.currentTimeMillis()) {
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 30));
+            // Shadow
+            g2d.setColor(Color.BLACK);
+            g2d.drawString(systemMessage, screenWidth / 2 - g2d.getFontMetrics().stringWidth(systemMessage) / 2 + 2, screenHeight - 50 + 2);
+            // Text
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString(systemMessage, screenWidth / 2 - g2d.getFontMetrics().stringWidth(systemMessage) / 2, screenHeight - 50);
+        }
+    }
+
+    public void showSystemMessage(String message) {
+        this.systemMessage = message;
+        this.systemMessageTime = System.currentTimeMillis() + 5000; // Show for 5 seconds
     }
 
     public void sendTeleportPacket(String username, String map, int x, int y) {
