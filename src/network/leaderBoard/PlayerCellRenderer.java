@@ -16,8 +16,8 @@ public class PlayerCellRenderer extends JLabel implements ListCellRenderer<Playe
         Image image = new BufferedImage(value.getImage().getImage().getWidth(null), value.getImage().getImage().getHeight(null), BufferedImage.TYPE_INT_ARGB);
         Graphics g = image.getGraphics();
         g.drawImage(value.getImage().getImage(), 0, 0, null);
-        g.setColor(new Color(250,240,230));
-        g.setFont(new Font("Arial", Font.BOLD, 21));
+        g.setColor(new Color(250, 187, 56));
+        g.setFont(new Font("Arial", Font.BOLD, 19));
         g.drawString(value.toString(), 35, 25);
         g.dispose();
 

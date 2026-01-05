@@ -8,6 +8,7 @@ import objects.entities.MazeEnemy.EnemyType;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * MazeEnemySpawner manages enemy spawning and traps in maze mode.
@@ -15,8 +16,8 @@ import java.util.*;
  * Also manages trap placement throughout the maze.
  */
 public class MazeEnemySpawner {
-    private ArrayList<MazeEnemy> enemies;
-    private ArrayList<Trap> traps;
+    private CopyOnWriteArrayList<MazeEnemy> enemies;
+    private CopyOnWriteArrayList<Trap> traps;
     private GameScene gameScene;
     private Random random;
     
@@ -37,8 +38,8 @@ public class MazeEnemySpawner {
     
     public MazeEnemySpawner(GameScene gameScene) {
         this.gameScene = gameScene;
-        this.enemies = new ArrayList<>();
-        this.traps = new ArrayList<>();
+        this.enemies = new CopyOnWriteArrayList<>();
+        this.traps = new CopyOnWriteArrayList<>();
         this.random = new Random();
         this.tileSize = gameScene.getTileSize();
     }
@@ -473,8 +474,8 @@ public class MazeEnemySpawner {
     }
     
     // Getters
-    public ArrayList<MazeEnemy> getEnemies() { return enemies; }
-    public ArrayList<Trap> getTraps() { return traps; }
+    public java.util.List<MazeEnemy> getEnemies() { return enemies; }
+    public java.util.List<Trap> getTraps() { return traps; }
     public boolean isActive() { return isActive; }
     public int getEnemiesKilled() { return enemiesKilled; }
     public int getEnemiesAlive() { return (int) enemies.stream().filter(MazeEnemy::isAlive).count(); }

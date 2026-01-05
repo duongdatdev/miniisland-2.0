@@ -333,6 +333,17 @@ public class ClientRecivingThread extends Thread {
                         gameScene.removePlayer(username);
                     }
                 }
+                // ============== Maze Time Sync Messages ==============
+                else if (sentence.startsWith("MazeTime,")) {
+                    // Server syncs maze time: MazeTime,<remainingTime>
+                    String[] parts = sentence.split(",");
+                    int remainingTime = Integer.parseInt(parts[1]);
+                    gameScene.getMazeMap().setRemainingTime(remainingTime);
+                    
+                } else if (sentence.startsWith("MazeTimeUp")) {
+                    // Time's up - set remaining time to 0
+                    gameScene.getMazeMap().setRemainingTime(0);
+                }
                 // ============== Score Battle Mode Messages ==============
                 else if (sentence.startsWith("ScoreBattleStart")) {
                     // Server announces game start

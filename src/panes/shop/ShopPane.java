@@ -60,50 +60,68 @@ public class ShopPane extends JPanel {
     }
     
     private void initUI() {
-        // Header
+        // Header with gradient-style background
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(bgColor);
-        headerPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
+        headerPanel.setBackground(new Color(35, 35, 50));
+        headerPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 2, 0, accentColor),
+            new EmptyBorder(5, 10, 10, 10)
+        ));
         
-        JLabel titleLabel = new JLabel("👕 SKIN SHOP");
+        // Title - simple text without symbols
+        JLabel titleLabel = new JLabel("SKIN SHOP");
         titleLabel.setForeground(Color.WHITE);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
-        coinsLabel = new JLabel("💰 0");
+        // Coins display
+        JPanel coinsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        coinsPanel.setBackground(new Color(45, 50, 65));
+        coinsPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(goldColor, 2),
+            new EmptyBorder(5, 12, 5, 12)
+        ));
+        
+        coinsLabel = new JLabel("0");
         coinsLabel.setForeground(goldColor);
-        coinsLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        headerPanel.add(coinsLabel, BorderLayout.EAST);
+        coinsLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        
+        coinsPanel.add(coinsLabel);
+        headerPanel.add(coinsPanel, BorderLayout.EAST);
         
         add(headerPanel, BorderLayout.NORTH);
         
-        // Tabs
+        // Tabs with custom styling
         tabbedPane = new JTabbedPane();
         tabbedPane.setBackground(panelColor);
         tabbedPane.setForeground(Color.WHITE);
-        tabbedPane.setFont(new Font("Arial", Font.BOLD, 13));
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
         
         // Shop tab
         shopPanel = new JPanel();
-        shopPanel.setLayout(new GridLayout(0, 3, 10, 10));
+        shopPanel.setLayout(new GridLayout(0, 3, 12, 12));
         shopPanel.setBackground(panelColor);
-        shopPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        shopPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
         JScrollPane shopScroll = new JScrollPane(shopPanel);
         shopScroll.setBackground(panelColor);
         shopScroll.getViewport().setBackground(panelColor);
         shopScroll.setBorder(null);
-        tabbedPane.addTab("🏪 Shop", shopScroll);
+        shopScroll.getVerticalScrollBar().setUnitIncrement(16);
+        styleScrollPane(shopScroll);
+        tabbedPane.addTab("Shop", shopScroll);
         
         // My Skins tab  
         mySkinsPanel = new JPanel();
-        mySkinsPanel.setLayout(new GridLayout(0, 3, 10, 10));
+        mySkinsPanel.setLayout(new GridLayout(0, 3, 12, 12));
         mySkinsPanel.setBackground(panelColor);
-        mySkinsPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        mySkinsPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
         JScrollPane mySkinsScroll = new JScrollPane(mySkinsPanel);
         mySkinsScroll.setBackground(panelColor);
         mySkinsScroll.getViewport().setBackground(panelColor);
         mySkinsScroll.setBorder(null);
-        tabbedPane.addTab("🎒 My Skins", mySkinsScroll);
+        mySkinsScroll.getVerticalScrollBar().setUnitIncrement(16);
+        styleScrollPane(mySkinsScroll);
+        tabbedPane.addTab("My Skins", mySkinsScroll);
         
         tabbedPane.addChangeListener(e -> {
             if (tabbedPane.getSelectedIndex() == 1) {
@@ -113,18 +131,78 @@ public class ShopPane extends JPanel {
         
         add(tabbedPane, BorderLayout.CENTER);
         
-        // Refresh button
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Bottom panel with refresh button
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
         bottomPanel.setBackground(bgColor);
+        bottomPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
         
-        JButton refreshBtn = new JButton("🔄 Refresh");
+        JButton refreshBtn = new JButton("Refresh");
         refreshBtn.setBackground(accentColor);
         refreshBtn.setForeground(Color.WHITE);
+        refreshBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         refreshBtn.setFocusPainted(false);
+        refreshBtn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        refreshBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         refreshBtn.addActionListener(e -> requestShopData());
         bottomPanel.add(refreshBtn);
         
         add(bottomPanel, BorderLayout.SOUTH);
+    }
+    
+    /**
+     * Style scrollpane with dark theme
+     */
+    private void styleScrollPane(JScrollPane scrollPane) {
+        JScrollBar verticalBar = scrollPane.getVerticalScrollBar();
+        JScrollBar horizontalBar = scrollPane.getHorizontalScrollBar();
+        
+        // Dark scrollbar styling
+        Color scrollBg = new Color(35, 35, 50);
+        Color scrollThumb = new Color(80, 80, 100);
+        
+        verticalBar.setBackground(scrollBg);
+        verticalBar.setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = scrollThumb;
+                this.trackColor = scrollBg;
+            }
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                return createZeroButton();
+            }
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                return createZeroButton();
+            }
+            private JButton createZeroButton() {
+                JButton button = new JButton();
+                button.setPreferredSize(new Dimension(0, 0));
+                return button;
+            }
+        });
+        
+        horizontalBar.setBackground(scrollBg);
+        horizontalBar.setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = scrollThumb;
+                this.trackColor = scrollBg;
+            }
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                return createZeroButton();
+            }
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                return createZeroButton();
+            }
+            private JButton createZeroButton() {
+                JButton button = new JButton();
+                button.setPreferredSize(new Dimension(0, 0));
+                return button;
+            }
+        });
     }
     
     private void requestShopData() {
@@ -206,7 +284,7 @@ public class ShopPane extends JPanel {
             String[] parts = data.split(",");
             if (parts.length >= 2) {
                 playerCoins = Integer.parseInt(parts[1]);
-                SwingUtilities.invokeLater(() -> coinsLabel.setText("💰 " + playerCoins));
+                SwingUtilities.invokeLater(() -> coinsLabel.setText(String.valueOf(playerCoins)));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -255,7 +333,7 @@ public class ShopPane extends JPanel {
             
             SwingUtilities.invokeLater(() -> {
                 playerCoins = newBalance;
-                coinsLabel.setText("💰 " + playerCoins);
+                coinsLabel.setText(String.valueOf(playerCoins));
                 
                 JOptionPane.showMessageDialog(this, 
                     message, 
@@ -281,62 +359,95 @@ public class ShopPane extends JPanel {
     }
     
     private JPanel createSkinCard(SkinItem skin) {
-        JPanel card = new JPanel();
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            }
+        };
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(new Color(55, 55, 75));
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(70, 70, 90), 2),
-            new EmptyBorder(10, 10, 10, 10)
+            BorderFactory.createLineBorder(new Color(80, 80, 110), 2),
+            new EmptyBorder(12, 12, 12, 12)
         ));
         
-        // Skin preview image
+        // Skin preview image with styled container
+        JPanel previewContainer = new JPanel();
+        previewContainer.setLayout(new BorderLayout());
+        previewContainer.setBackground(new Color(40, 40, 55));
+        previewContainer.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 80), 1),
+            new EmptyBorder(8, 8, 8, 8)
+        ));
+        previewContainer.setMaximumSize(new Dimension(80, 80));
+        previewContainer.setPreferredSize(new Dimension(80, 80));
+        previewContainer.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
         JLabel previewLabel = new JLabel();
-        previewLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        previewLabel.setVerticalAlignment(SwingConstants.CENTER);
         try {
             BufferedImage img = ImageIO.read(getClass().getResource("/player/" + skin.skinFolder + "/Character_Stand.png"));
             if (img != null) {
-                Image scaled = img.getScaledInstance(64, 64, Image.SCALE_SMOOTH);
+                // Get only the first frame from sprite sheet (divide width by 4)
+                int frameWidth = img.getWidth() / 4;
+                int frameHeight = img.getHeight();
+                BufferedImage firstFrame = img.getSubimage(0, 0, frameWidth, frameHeight);
+                Image scaled = firstFrame.getScaledInstance(48, 48, Image.SCALE_SMOOTH);
                 previewLabel.setIcon(new ImageIcon(scaled));
             }
         } catch (Exception e) {
+            // Create styled placeholder for missing skins
             previewLabel.setText("?");
-            previewLabel.setForeground(Color.GRAY);
-            previewLabel.setFont(new Font("Arial", Font.BOLD, 32));
+            previewLabel.setForeground(new Color(150, 150, 180));
+            previewLabel.setFont(new Font("Segoe UI", Font.BOLD, 36));
         }
-        previewLabel.setPreferredSize(new Dimension(64, 64));
-        card.add(previewLabel);
-        card.add(Box.createVerticalStrut(5));
+        previewContainer.add(previewLabel, BorderLayout.CENTER);
         
-        // Name
+        // Center the preview container
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerPanel.setBackground(new Color(55, 55, 75));
+        centerPanel.add(previewContainer);
+        card.add(centerPanel);
+        card.add(Box.createVerticalStrut(8));
+        
+        // Name with better styling
         JLabel nameLabel = new JLabel(skin.name);
         nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(nameLabel);
         
         // Description
         JLabel descLabel = new JLabel("<html><center>" + skin.description + "</center></html>");
-        descLabel.setForeground(Color.LIGHT_GRAY);
-        descLabel.setFont(new Font("Arial", Font.PLAIN, 10));
+        descLabel.setForeground(new Color(170, 170, 190));
+        descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(descLabel);
-        card.add(Box.createVerticalStrut(5));
+        card.add(Box.createVerticalStrut(8));
         
         // Price / Buy button
         if (skin.price == 0) {
             JLabel freeLabel = new JLabel("FREE");
             freeLabel.setForeground(successColor);
-            freeLabel.setFont(new Font("Arial", Font.BOLD, 12));
+            freeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
             freeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             card.add(freeLabel);
         } else {
-            JButton buyBtn = new JButton("💰 " + skin.price);
+            JButton buyBtn = new JButton(skin.price + " coins");
             buyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-            buyBtn.setBackground(playerCoins >= skin.price ? accentColor : Color.GRAY);
-            buyBtn.setForeground(Color.WHITE);
-            buyBtn.setFont(new Font("Arial", Font.BOLD, 11));
+            boolean canAfford = playerCoins >= skin.price;
+            buyBtn.setBackground(canAfford ? new Color(70, 130, 80) : new Color(80, 80, 90));
+            buyBtn.setForeground(canAfford ? Color.WHITE : new Color(150, 150, 150));
+            buyBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             buyBtn.setFocusPainted(false);
-            buyBtn.setEnabled(playerCoins >= skin.price);
+            buyBtn.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+            buyBtn.setCursor(canAfford ? new Cursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+            buyBtn.setEnabled(canAfford);
             
             int skinId = skin.id;
             String skinName = skin.name;
@@ -375,48 +486,81 @@ public class ShopPane extends JPanel {
     }
     
     private JPanel createMySkinCard(PlayerSkin skin) {
-        JPanel card = new JPanel();
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            }
+        };
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        Color bgCol = skin.isEquipped ? new Color(50, 80, 60) : new Color(55, 55, 75);
+        Color bgCol = skin.isEquipped ? new Color(45, 75, 55) : new Color(55, 55, 75);
+        Color borderCol = skin.isEquipped ? successColor : new Color(80, 80, 110);
         card.setBackground(bgCol);
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(skin.isEquipped ? successColor : new Color(70, 70, 90), 2),
-            new EmptyBorder(10, 10, 10, 10)
+            BorderFactory.createLineBorder(borderCol, 2),
+            new EmptyBorder(12, 12, 12, 12)
         ));
         
-        // Preview
+        // Preview with styled container
+        JPanel previewContainer = new JPanel();
+        previewContainer.setLayout(new BorderLayout());
+        previewContainer.setBackground(new Color(40, 40, 55));
+        previewContainer.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 80), 1),
+            new EmptyBorder(8, 8, 8, 8)
+        ));
+        previewContainer.setMaximumSize(new Dimension(80, 80));
+        previewContainer.setPreferredSize(new Dimension(80, 80));
+        previewContainer.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
         JLabel previewLabel = new JLabel();
-        previewLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        previewLabel.setVerticalAlignment(SwingConstants.CENTER);
         try {
             BufferedImage img = ImageIO.read(getClass().getResource("/player/" + skin.skinFolder + "/Character_Stand.png"));
             if (img != null) {
-                Image scaled = img.getScaledInstance(64, 64, Image.SCALE_SMOOTH);
+                // Get only the first frame from sprite sheet (divide width by 4)
+                int frameWidth = img.getWidth() / 4;
+                int frameHeight = img.getHeight();
+                BufferedImage firstFrame = img.getSubimage(0, 0, frameWidth, frameHeight);
+                Image scaled = firstFrame.getScaledInstance(48, 48, Image.SCALE_SMOOTH);
                 previewLabel.setIcon(new ImageIcon(scaled));
             }
         } catch (Exception e) {
             previewLabel.setText("?");
-            previewLabel.setForeground(Color.GRAY);
+            previewLabel.setForeground(new Color(150, 150, 180));
+            previewLabel.setFont(new Font("Segoe UI", Font.BOLD, 36));
         }
-        card.add(previewLabel);
-        card.add(Box.createVerticalStrut(5));
+        previewContainer.add(previewLabel, BorderLayout.CENTER);
+        
+        // Center the preview container
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerPanel.setBackground(bgCol);
+        centerPanel.add(previewContainer);
+        card.add(centerPanel);
+        card.add(Box.createVerticalStrut(8));
         
         // Name + equipped status
-        String status = skin.isEquipped ? " ✅" : "";
-        JLabel nameLabel = new JLabel(skin.name + status);
+        JLabel nameLabel = new JLabel(skin.name);
         nameLabel.setForeground(Color.WHITE);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(nameLabel);
-        card.add(Box.createVerticalStrut(5));
+        card.add(Box.createVerticalStrut(8));
         
-        // Equip button
+        // Equip button or Equipped label
         if (!skin.isEquipped) {
             JButton equipBtn = new JButton("Equip");
             equipBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
             equipBtn.setBackground(accentColor);
             equipBtn.setForeground(Color.WHITE);
-            equipBtn.setFont(new Font("Arial", Font.BOLD, 11));
+            equipBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             equipBtn.setFocusPainted(false);
+            equipBtn.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+            equipBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
             
             int skinId = skin.id;
             equipBtn.addActionListener(e -> {
@@ -428,7 +572,7 @@ public class ShopPane extends JPanel {
         } else {
             JLabel equippedLabel = new JLabel("EQUIPPED");
             equippedLabel.setForeground(successColor);
-            equippedLabel.setFont(new Font("Arial", Font.BOLD, 11));
+            equippedLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
             equippedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             card.add(equippedLabel);
         }

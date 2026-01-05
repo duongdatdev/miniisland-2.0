@@ -192,23 +192,16 @@ public class MazeMap extends Map {
             return;
         }
         
-        // Update timer
-        if (timerStarted) {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastTimeUpdate >= 1000) {
-                remainingTime--;
-                lastTimeUpdate = currentTime;
-                
-                if (remainingTime <= 0) {
-                    // Time's up - game over
-                    isGameOver = true;
-                    if (!scoreSent) {
-                        sendScoreToServer(false);
-                        scoreSent = true;
-                    }
-                    return;
-                }
+        // Không tự đếm thời gian nữa - thời gian được server quản lý và sync qua MazeTime message
+        // Chỉ check nếu hết giờ thì game over
+        if (remainingTime <= 0 && !isGameOver) {
+            // Time's up - game over
+            isGameOver = true;
+            if (!scoreSent) {
+                sendScoreToServer(false);
+                scoreSent = true;
             }
+            return;
         }
         
         if (!targetPlayer.isPlayerAlive()) {
@@ -668,6 +661,14 @@ public class MazeMap extends Map {
     public int getCoinsCollected() { return coinsCollected; }
     public int getTrapHits() { return trapHits; }
     public int getRemainingTime() { return remainingTime; }
+    
+    /**
+     * Set remaining time from server sync (MazeTime message)
+     */
+    public void setRemainingTime(int time) {
+        this.remainingTime = time;
+    }
+    
     public Difficulty getDifficulty() { return currentDifficulty; }
     
     public void setDifficulty(Difficulty difficulty) {
