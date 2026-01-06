@@ -726,4 +726,36 @@ public class GameScene extends JPanel implements Runnable {
     public void setShopPane(ShopPane shopPane) {
         this.shopPane = shopPane;
     }
+    
+    /**
+     * Return to login screen (used when server is full or disconnected)
+     */
+    public void returnToLogin() {
+        // Stop game thread
+        isRunning = false;
+        gameThread = null;
+        
+        // Disconnect from server
+        if (Client.getGameClient() != null && Client.getGameClient().getWebSocketClient() != null) {
+            try {
+                Client.getGameClient().getWebSocketClient().closeBlocking();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Switch to login panel
+        Container parent = this.getParent();
+        while (parent != null && !(parent instanceof MiniIsland)) {
+            parent = parent.getParent();
+        }
+        
+        if (parent instanceof MiniIsland) {
+            MiniIsland miniIsland = (MiniIsland) parent;
+            miniIsland.changePanel("SignInPanel");
+        }
+        
+        // Reset instance for new game
+        instance = null;
+    }
 }

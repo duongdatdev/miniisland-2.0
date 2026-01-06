@@ -64,6 +64,26 @@ public class ClientRecivingThread extends Thread {
     private void handleMessage(String sentence) {
         try {
 
+                // Handle server full message
+                if (sentence.startsWith("ServerFull")) {
+                    String[] parts = sentence.split(",");
+                    int maxPlayers = parts.length > 1 ? Integer.parseInt(parts[1]) : 20;
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(
+                            null,
+                            "Server is full! (" + maxPlayers + "/" + maxPlayers + " players)\n" +
+                            "Please try again later.",
+                            "Server Full",
+                            JOptionPane.WARNING_MESSAGE
+                        );
+                        
+                        // Return to login screen
+                        gameScene.returnToLogin();
+                    });
+                    return;
+                }
+
                 if (sentence.startsWith("ID")) {
                     int pos1 = sentence.indexOf(',');
 
@@ -305,8 +325,21 @@ public class ClientRecivingThread extends Thread {
                     }
 
                     gameScene.requestFocusInWindow();
-                } else if (sentence.startsWith("Maze")) {
-                    String map = sentence.substring(4);
+                }
+                // ============== Maze Time Sync Messages (MUST be before generic "Maze" handler!) ==============
+                else if (sentence.startsWith("MazeTime,")) {
+                    // Server syncs maze time: MazeTime,<remainingTime>
+                    String[] parts = sentence.split(",");
+                    int remainingTime = Integer.parseInt(parts[1]);
+                    gameScene.getMazeMap().setRemainingTime(remainingTime);
+                    
+                } else if (sentence.startsWith("MazeTimeUp")) {
+                    // Time's up - set remaining time to 0
+                    gameScene.getMazeMap().setRemainingTime(0);
+                    
+                } else if (sentence.startsWith("MazeMap,")) {
+                    // MazeMap,<map_data> - New maze map from server
+                    String map = sentence.substring(8);
 
                     gameScene.getMazeMap().clear();
                     gameScene.getPlayerMP().setX(0);
@@ -332,17 +365,6 @@ public class ClientRecivingThread extends Thread {
                     if (!username.equals(clientPlayer.getUsername())) {
                         gameScene.removePlayer(username);
                     }
-                }
-                // ============== Maze Time Sync Messages ==============
-                else if (sentence.startsWith("MazeTime,")) {
-                    // Server syncs maze time: MazeTime,<remainingTime>
-                    String[] parts = sentence.split(",");
-                    int remainingTime = Integer.parseInt(parts[1]);
-                    gameScene.getMazeMap().setRemainingTime(remainingTime);
-                    
-                } else if (sentence.startsWith("MazeTimeUp")) {
-                    // Time's up - set remaining time to 0
-                    gameScene.getMazeMap().setRemainingTime(0);
                 }
                 // ============== Score Battle Mode Messages ==============
                 else if (sentence.startsWith("ScoreBattleStart")) {
