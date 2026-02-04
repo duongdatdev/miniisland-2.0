@@ -234,7 +234,7 @@ public class MiniIsland extends JFrame {
         this.setTitle("Mini Island");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.pack();
-//        this.setResizable(false);
+        this.setResizable(false);
         this.setLayout(cardLayout);
 
         this.add(signInPane, "SignInPanel");

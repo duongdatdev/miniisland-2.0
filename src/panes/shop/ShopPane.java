@@ -220,7 +220,7 @@ public class ShopPane extends JPanel {
     }
     
     /**
-     * Parse danh sách skins từ server
+     * Parse list skin
      * Format: SkinsList,id|name|desc|price|folder|isDefault,...
      */
     public void parseSkinsList(String data) {
